@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مواقيت الصلاة - اليمن</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="background-glow"></div>
+    <div class="dynamic-bg" id="dynamic-bg"></div>
+    <div class="particles" id="particles"></div>
+    
+    <div class="container">
+        <header>
+            <div class="header-top">
+                <div class="date-info">
+                    <h2 id="gregorian-date">---</h2>
+                    <p id="hijri-date">---</p>
+                </div>
+                <div class="top-actions">
+                    <button id="qibla-btn" title="القبلة">
+                        <i class="fas fa-compass"></i>
+                    </button>
+                    <button id="settings-btn" title="الإعدادات">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                    <div class="location-selector">
+                        <select id="city-select">
+                            <option value="Aden">عدن</option>
+                            <option value="Taiz">تعز</option>
+                            <option value="custom">موقعي الحالي</option>
+                        </select>
+                        <button id="geo-btn" title="تحديد الموقع تلقائياً">
+                            <i class="fas fa-location-crosshairs"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="location-display">
+                <i class="fas fa-map-marker-alt"></i>
+                <span id="current-location">جاري تحديد الموقع...</span>
+                <span id="precise-area"></span>
+            </div>
+        </header>
+
+        <main>
+            <!-- Qibla Section (Hidden by default) -->
+            <section id="qibla-section" class="qibla-container glass" style="display: none;">
+                <div class="qibla-compass">
+                    <div class="compass-ring"></div>
+                    <div class="kaaba-icon"><i class="fas fa-kaaba"></i></div>
+                    <div class="compass-arrow" id="compass-arrow"></div>
+                </div>
+                <p>اتجاه القبلة من موقعك</p>
+                <button onclick="document.getElementById('qibla-section').style.display='none'" class="btn-small">إغلاق</button>
+            </section>
+
+            <section class="next-prayer-section glass">
+                <div class="next-prayer-info">
+                    <h3 class="floating">الصلاة القادمة</h3>
+                    <h1 id="next-prayer-name" class="glow-text">---</h1>
+                    <div class="countdown" id="countdown">00:00:00</div>
+                    <div class="progress-container">
+                        <div class="progress-bar" id="prayer-progress"></div>
+                    </div>
+                    <p id="remaining-text">متبقي على الأذان</p>
+                </div>
+                <div class="sun-path">
+                    <div class="sun-icon" id="sun-icon"><i class="fas fa-sun"></i></div>
+                </div>
+            </section>
+
+            <section class="prayer-times-grid">
+                <!-- Cards will be updated via JS with icons and effects -->
+            </section>
+
+            <section class="adhkar-section glass">
+                <div class="adhkar-content">
+                    <i class="fas fa-quote-right"></i>
+                    <p id="daily-dhikr">أرحنا بها يا بلال..</p>
+                    <button id="next-dhikr" class="btn-icon"><i class="fas fa-sync-alt"></i></button>
+                </div>
+            </section>
+        </main>
+
+        <!-- Settings Modal -->
+        <div id="settings-modal" class="modal">
+            <div class="modal-content glass">
+                <span class="close">&times;</span>
+                <h2>تعديل أوقات الصلاة (بالدقائق)</h2>
+                <div class="adjustments-grid">
+                    <div class="adj-item">
+                        <label>الفجر</label>
+                        <input type="number" id="adj-Fajr" value="0">
+                    </div>
+                    <div class="adj-item">
+                        <label>الظهر</label>
+                        <input type="number" id="adj-Dhuhr" value="0">
+                    </div>
+                    <div class="adj-item">
+                        <label>العصر</label>
+                        <input type="number" id="adj-Asr" value="0">
+                    </div>
+                    <div class="adj-item">
+                        <label>المغرب</label>
+                        <input type="number" id="adj-Maghrib" value="0">
+                    </div>
+                    <div class="adj-item">
+                        <label>العشاء</label>
+                        <input type="number" id="adj-Isha" value="0">
+                    </div>
+                </div>
+                <button id="save-settings" class="btn-primary">حفظ التعديلات</button>
+            </div>
+        </div>
+
+        <footer>
+            <p>تطوير: عبد الرحمن رضوان</p>
+            <div class="settings">
+                <button id="notification-toggle" title="تفعيل التنبيهات">
+                    <i class="fas fa-bell"></i>
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js');
+            });
+        }
+    </script>
+</body>
+</html>
