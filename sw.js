@@ -1,21 +1,82 @@
-const CACHE_NAME = 'prayer-times-yemen-v1';
+const CACHE_NAME = 'prayer-times-v2';
 const ASSETS = [
-    '/',
-    '/index.html',
-    '/style.css',
-    '/script.js',
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
-    'https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap'
+    './',
+    './index.html',
+    './style.css',
+    './script.js',
+    './manifest.json',
+    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
+    'https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap'
 ];
 
-self.addEventListener('install', (e) => {
-    e.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+// Install event - cache assets
+self.addEventListener('install', (event) => {
+    console.log('Service Worker installing...');
+    event.waitUntil(
+        caches.open(CACHE_NAME)
+            .then(cache => {
+                console.log('Caching assets...');
+                return cache.addAll(ASSETS);
+            })
+            .then(() => self.skipWaiting())
     );
 });
 
-self.addEventListener('fetch', (e) => {
-    e.respondWith(
-        caches.match(e.request).then((res) => res || fetch(e.request))
+// Activate event - clean up old caches
+self.addEventListener('activate', (event) => {
+    console.log('Service Worker activating...');
+    event.waitUntil(
+        caches.keys().then(cacheNames => {
+            return Promise.all(
+                cacheNames.map(cacheName => {
+                    if (cacheName !== CACHE_NAME) {
+                        console.log('Deleting old cache:', cacheName);
+                        return caches.delete(cacheName);
+                    }
+                })
+            );
+        }).then(() => self.clients.claim())
+    );
+});
+
+// Fetch event - network first with cache fallback
+self.addEventListener('fetch', (event) => {
+    // Skip non-GET requests and API requests
+    if (event.request.method !== 'GET' || event.request.url.includes('api.aladhan.com')) {
+        event.respondWith(fetch(event.request).catch(() => {
+            return new Response('Network error', { status: 408 });
+        }));
+        return;
+    }
+
+    event.respondWith(
+        fetch(event.request)
+            .then(response => {
+                // Cache new responses
+                if (response.ok && event.request.url.startsWith('http')) {
+                    const responseClone = response.clone();
+                    caches.open(CACHE_NAME).then(cache => {
+                        cache.put(event.request, responseClone);
+                    });
+                }
+                return response;
+            })
+            .catch(() => {
+                // Fallback to cache
+                return caches.match(event.request)
+                    .then(cachedResponse => {
+                        if (cachedResponse) {
+                            return cachedResponse;
+                        }
+                        // Return offline page for HTML requests
+                        if (event.request.headers.get('accept') && event.request.headers.get('accept').includes('text/html')) {
+                            return caches.match('./index.html');
+                        }
+                        return new Response('Offline content not available', {
+                            status: 404,
+                            statusText: 'Not Found'
+                        });
+                    });
+            })
     );
 });

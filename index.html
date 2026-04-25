@@ -2,139 +2,241 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مواقيت الصلاة - اليمن</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
-</head>
-<body>
-    <div class="background-glow"></div>
-    <div class="dynamic-bg" id="dynamic-bg"></div>
-    <div class="particles" id="particles"></div>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>نور | مواقيت الصلاة الفاخرة</title>
     
-    <div class="container">
-        <header>
-            <div class="header-top">
-                <div class="date-info">
-                    <h2 id="gregorian-date">---</h2>
-                    <p id="hijri-date">---</p>
-                </div>
-                <div class="top-actions">
-                    <button id="qibla-btn" title="القبلة">
-                        <i class="fas fa-compass"></i>
-                    </button>
-                    <button id="settings-btn" title="الإعدادات">
-                        <i class="fas fa-cog"></i>
-                    </button>
-                    <div class="location-selector">
-                        <select id="city-select">
-                            <option value="Aden">عدن</option>
-                            <option value="Taiz">تعز</option>
-                            <option value="custom">موقعي الحالي</option>
-                        </select>
-                        <button id="geo-btn" title="تحديد الموقع تلقائياً">
-                            <i class="fas fa-location-crosshairs"></i>
-                        </button>
+    <!-- PWA & Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/2855/2855171.png">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2855/2855171.png">
+    <meta name="theme-color" content="#020617">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="تطبيق مواقيت صلاة متطور بتصميم فاخر وتجربة مستخدم استثنائية - المطور عبد الرحمن رضوان">
+    
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="dark-mode">
+    <!-- Luxury Loading Screen -->
+    <div id="loader" class="loader-wrapper">
+        <div class="loader-content">
+            <div class="luxury-logo">
+                <svg width="120" height="120" viewBox="0 0 100 100" class="mosque-logo-svg">
+                    <defs>
+                        <linearGradient id="mosque-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#38bdf8;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#818cf8;stop-opacity:1" />
+                        </linearGradient>
+                        <filter id="glow">
+                            <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+                            <feMerge>
+                                <feMergeNode in="coloredBlur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+                    </defs>
+                    <!-- Mosque Dome and Minarets -->
+                    <path d="M50 20 C35 20 25 35 25 50 L75 50 C75 35 65 20 50 20 Z" fill="url(#mosque-grad)" filter="url(#glow)" />
+                    <path d="M20 40 L30 40 L30 80 L20 80 Z" fill="url(#mosque-grad)" />
+                    <path d="M70 40 L80 40 L80 80 L70 80 Z" fill="url(#mosque-grad)" />
+                    <path d="M15 80 L85 80 L85 90 L15 90 Z" fill="url(#mosque-grad)" />
+                    <circle cx="50" cy="15" r="3" fill="url(#mosque-grad)" />
+                    <path d="M48 15 L52 15 L52 25 L48 25 Z" fill="url(#mosque-grad)" />
+                </svg>
+            </div>
+            <p class="loader-text">نور</p>
+            <div class="loader-bar-container">
+                <div class="loader-bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Animated Background Layers -->
+    <div class="bg-wrapper">
+        <div id="dynamic-bg" class="dynamic-bg"></div>
+        <div id="stars" class="stars-layer"></div>
+        <div id="particles" class="particles-layer"></div>
+        <div class="glass-overlay"></div>
+    </div>
+
+    <div class="app-container">
+        <!-- Top Navigation -->
+        <header class="main-header">
+            <div class="header-content">
+                <div class="date-section">
+                    <h1 id="gregorian-date" class="fade-in">--</h1>
+                    <div class="hijri-badge">
+                        <i class="fa-solid fa-moon-stars"></i>
+                        <span id="hijri-date">--</span>
                     </div>
                 </div>
-            </div>
-            
-            <div class="location-display">
-                <i class="fas fa-map-marker-alt"></i>
-                <span id="current-location">جاري تحديد الموقع...</span>
-                <span id="precise-area"></span>
+                <div class="action-buttons">
+                    <button id="notification-toggle" class="icon-btn-luxury" title="التنبيهات">
+                        <i class="fa-solid fa-bell"></i>
+                    </button>
+                    <button id="settings-btn" class="icon-btn-luxury" title="الإعدادات">
+                        <i class="fa-solid fa-sliders"></i>
+                    </button>
+                </div>
             </div>
         </header>
 
-        <main>
-            <!-- Qibla Section (Hidden by default) -->
-            <section id="qibla-section" class="qibla-container glass" style="display: none;">
-                <div class="qibla-compass">
-                    <div class="compass-ring"></div>
-                    <div class="kaaba-icon"><i class="fas fa-kaaba"></i></div>
-                    <div class="compass-arrow" id="compass-arrow"></div>
-                </div>
-                <p>اتجاه القبلة من موقعك</p>
-                <button onclick="document.getElementById('qibla-section').style.display='none'" class="btn-small">إغلاق</button>
-            </section>
-
-            <section class="next-prayer-section glass">
-                <div class="next-prayer-info">
-                    <h3 class="floating">الصلاة القادمة</h3>
-                    <h1 id="next-prayer-name" class="glow-text">---</h1>
-                    <div class="countdown" id="countdown">00:00:00</div>
-                    <div class="progress-container">
-                        <div class="progress-bar" id="prayer-progress"></div>
+        <main class="content-area">
+            <!-- Hero Card: Next Prayer & Countdown -->
+            <section class="hero-card fade-up">
+                <div class="hero-glass">
+                    <div class="location-header">
+                        <button id="geo-btn" class="geo-pulse">
+                            <i class="fa-solid fa-location-arrow"></i>
+                        </button>
+                        <div class="location-info">
+                            <h3 id="current-location">تحديد الموقع...</h3>
+                            <p id="precise-area" class="text-muted"></p>
+                        </div>
                     </div>
-                    <p id="remaining-text">متبقي على الأذان</p>
-                </div>
-                <div class="sun-path">
-                    <div class="sun-icon" id="sun-icon"><i class="fas fa-sun"></i></div>
+
+                    <div class="next-prayer-focus">
+                        <span class="next-title">الصلاة القادمة</span>
+                        <h2 id="next-prayer-name" class="glow-text">--</h2>
+                        <div class="countdown-container">
+                            <span id="countdown" class="countdown-timer">00:00:00</span>
+                        </div>
+                    </div>
+
+                    <div class="prayer-progress-luxury">
+                        <div class="progress-labels">
+                            <span id="prev-prayer-label">--</span>
+                            <span id="next-prayer-label">--</span>
+                        </div>
+                        <div class="progress-track">
+                            <div id="prayer-progress" class="progress-fill">
+                                <div class="progress-glow"></div>
+                            </div>
+                        </div>
+                        <div class="sun-orbit">
+                            <div id="sun-icon" class="sun-orb">
+                                <i class="fa-solid fa-sun"></i>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 
-            <section class="prayer-times-grid">
-                <!-- Cards will be updated via JS with icons and effects -->
+            <!-- Quick City Switcher -->
+            <section class="quick-switcher fade-up">
+                <div class="pill-selector">
+                    <button class="city-pill active" data-city="Aden">عدن</button>
+                    <button class="city-pill" data-city="Taiz">تعز</button>
+                    <button class="city-pill" data-city="custom">تلقائي</button>
+                </div>
             </section>
 
-            <section class="adhkar-section glass">
-                <div class="adhkar-content">
-                    <i class="fas fa-quote-right"></i>
-                    <p id="daily-dhikr">أرحنا بها يا بلال..</p>
-                    <button id="next-dhikr" class="btn-icon"><i class="fas fa-sync-alt"></i></button>
+            <!-- Prayer Grid -->
+            <section id="prayer-list" class="prayer-grid fade-up">
+                <!-- Injected via JS -->
+            </section>
+
+            <!-- Floating Action Tools -->
+            <section class="action-tools fade-up">
+                <button id="qibla-btn" class="tool-card-luxury">
+                    <div class="tool-icon"><i class="fa-solid fa-compass-drafting"></i></div>
+                    <span>اتجاه القبلة</span>
+                </button>
+                <button id="dhikr-btn" class="tool-card-luxury">
+                    <div class="tool-icon"><i class="fa-solid fa-hand-holding-heart"></i></div>
+                    <span>أذكار اليوم</span>
+                </button>
+            </section>
+
+            <!-- Qibla Component (Hidden by default) -->
+            <section id="qibla-overlay" class="qibla-overlay">
+                <div class="qibla-content hero-glass">
+                    <button class="close-overlay">&times;</button>
+                    <h3>بوصلة القبلة</h3>
+                    <div class="compass-wrapper">
+                        <div class="compass-dial">
+                            <div id="compass-arrow" class="compass-needle"></div>
+                            <div class="kaaba-center">
+                                <i class="fa-solid fa-kaaba"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="qibla-degree">الدرجة: <span id="qibla-deg">--</span>°</p>
                 </div>
             </section>
         </main>
 
-        <!-- Settings Modal -->
-        <div id="settings-modal" class="modal">
-            <div class="modal-content glass">
-                <span class="close">&times;</span>
-                <h2>تعديل أوقات الصلاة (بالدقائق)</h2>
-                <div class="adjustments-grid">
-                    <div class="adj-item">
-                        <label>الفجر</label>
-                        <input type="number" id="adj-Fajr" value="0">
-                    </div>
-                    <div class="adj-item">
-                        <label>الظهر</label>
-                        <input type="number" id="adj-Dhuhr" value="0">
-                    </div>
-                    <div class="adj-item">
-                        <label>العصر</label>
-                        <input type="number" id="adj-Asr" value="0">
-                    </div>
-                    <div class="adj-item">
-                        <label>المغرب</label>
-                        <input type="number" id="adj-Maghrib" value="0">
-                    </div>
-                    <div class="adj-item">
-                        <label>العشاء</label>
-                        <input type="number" id="adj-Isha" value="0">
-                    </div>
-                </div>
-                <button id="save-settings" class="btn-primary">حفظ التعديلات</button>
+        <footer class="main-footer">
+            <div class="dhikr-shuffled hero-glass">
+                <p id="daily-dhikr">"أرحنا بها يا بلال"</p>
+                <button id="refresh-dhikr" class="refresh-btn"><i class="fa-solid fa-arrows-rotate"></i></button>
             </div>
-        </div>
-
-        <footer>
-            <p>تطوير: عبد الرحمن رضوان</p>
-            <div class="settings">
-                <button id="notification-toggle" title="تفعيل التنبيهات">
-                    <i class="fas fa-bell"></i>
-                </button>
-            </div>
+            <p class="copyright">© 2026 Abdulrahman Radwan. جميع الحقوق محفوظة.</p>
         </footer>
     </div>
 
+    <!-- Luxury Settings Modal -->
+    <div id="settings-modal" class="modal-luxury">
+        <div class="modal-blur-bg"></div>
+        <div class="modal-sheet">
+            <div class="modal-handle"></div>
+            <div class="modal-header">
+                <h2>الإعدادات الفاخرة</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="setting-group">
+                    <label>طريقة الحساب</label>
+                    <select id="calc-method" class="luxury-input">
+                        <option value="3">رابطة العالم الإسلامي</option>
+                        <option value="2">الجمعية الإسلامية لأمريكا الشمالية (ISNA)</option>
+                        <option value="4">جامعة أم القرى (مكة)</option>
+                        <option value="5">الهيئة المصرية العامة للمساحة</option>
+                    </select>
+                </div>
+                
+                <div class="setting-group row">
+                    <div class="toggle-item">
+                        <span>صوت التنبيه</span>
+                        <label class="switch">
+                            <input type="checkbox" id="sound-toggle" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="toggle-item">
+                        <span>الاهتزاز</span>
+                        <label class="switch">
+                            <input type="checkbox" id="vibrate-toggle" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <label>تعديل يدوي (دقائق)</label>
+                    <div class="adj-grid">
+                        <div class="adj-field"><span>فجر</span><input type="number" id="adj-Fajr" value="0"></div>
+                        <div class="adj-field"><span>ظهر</span><input type="number" id="adj-Dhuhr" value="0"></div>
+                        <div class="adj-field"><span>عصر</span><input type="number" id="adj-Asr" value="0"></div>
+                        <div class="adj-field"><span>مغرب</span><input type="number" id="adj-Maghrib" value="0"></div>
+                        <div class="adj-field"><span>عشاء</span><input type="number" id="adj-Isha" value="0"></div>
+                    </div>
+                </div>
+                
+                <button id="save-settings" class="btn-luxury-primary">حفظ الإعدادات</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Audio -->
+    <audio id="notification-sound" src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3" preload="auto"></audio>
+
     <script src="script.js"></script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js');
-            });
-        }
-    </script>
 </body>
 </html>
