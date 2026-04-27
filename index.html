@@ -59,7 +59,7 @@
 
     <!-- Animated Background Layers -->
     <div class="bg-wrapper">
-        <div id="dynamic-bg" class="dynamic-bg"></div>
+        <div id="dynamic-bg" class="dynamic-bg bg-night"></div>
         <div id="stars" class="stars-layer"></div>
         <div id="particles" class="particles-layer"></div>
         <div class="glass-overlay"></div>
@@ -70,13 +70,27 @@
         <header class="main-header">
             <div class="header-content">
                 <div class="date-section">
+                    <div class="current-time-display">
+                        <h2 id="digital-clock">00:00:00</h2>
+                        <span id="time-period">--</span>
+                    </div>
                     <h1 id="gregorian-date" class="fade-in">--</h1>
                     <div class="hijri-badge">
                         <i class="fa-solid fa-moon-stars"></i>
                         <span id="hijri-date">--</span>
                     </div>
+                    <div id="ramadan-countdown" class="hijri-badge" style="display: none; margin-top: 8px;">
+                        <i class="fa-solid fa-kaaba"></i>
+                        <span id="ramadan-text">--</span>
+                    </div>
                 </div>
                 <div class="action-buttons">
+                    <button id="location-search-btn" class="icon-btn-luxury" title="البحث عن مدينة">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </button>
+                    <button id="theme-toggle" class="icon-btn-luxury" title="تبديل الوضع">
+                        <i class="fa-solid fa-moon"></i>
+                    </button>
                     <button id="notification-toggle" class="icon-btn-luxury" title="التنبيهات">
                         <i class="fa-solid fa-bell"></i>
                     </button>
@@ -110,32 +124,16 @@
                     </div>
 
                     <div class="prayer-progress-luxury">
-                        <div class="progress-labels">
-                            <span id="prev-prayer-label">--</span>
-                            <span id="next-prayer-label">--</span>
-                        </div>
                         <div class="progress-track">
                             <div id="prayer-progress" class="progress-fill">
                                 <div class="progress-glow"></div>
-                            </div>
-                        </div>
-                        <div class="sun-orbit">
-                            <div id="sun-icon" class="sun-orb">
-                                <i class="fa-solid fa-sun"></i>
                             </div>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <!-- Quick City Switcher -->
-            <section class="quick-switcher fade-up">
-                <div class="pill-selector">
-                    <button class="city-pill active" data-city="Aden">عدن</button>
-                    <button class="city-pill" data-city="Taiz">تعز</button>
-                    <button class="city-pill" data-city="custom">تلقائي</button>
-                </div>
-            </section>
+
 
             <!-- Prayer Grid -->
             <section id="prayer-list" class="prayer-grid fade-up">
@@ -181,6 +179,49 @@
         </footer>
     </div>
 
+    <!-- Adhkar Modal -->
+    <div id="adhkar-modal" class="modal-luxury">
+        <div class="modal-blur-bg"></div>
+        <div class="modal-sheet adhkar-sheet">
+            <div class="modal-handle"></div>
+            <div class="modal-header">
+                <h2>أذكار المسلم</h2>
+                <button class="close-adhkar-modal close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="adhkar-tabs">
+                    <button class="adhkar-tab active" data-category="morning">الصباح</button>
+                    <button class="adhkar-tab" data-category="evening">المساء</button>
+                    <button class="adhkar-tab" data-category="after_prayer">بعد الصلاة</button>
+                </div>
+                <div id="adhkar-list" class="adhkar-content-list">
+                    <!-- Adhkar items will be injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Location Search Modal -->
+    <div id="location-modal" class="modal-luxury">
+        <div class="modal-blur-bg"></div>
+        <div class="modal-sheet">
+            <div class="modal-handle"></div>
+            <div class="modal-header">
+                <h2>البحث عن مدينة</h2>
+                <button class="close-location-modal close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="search-container-luxury">
+                    <input type="text" id="location-search-input" class="luxury-input" placeholder="اكتب اسم المدينة هنا...">
+                    <button id="execute-search" class="icon-btn-luxury"><i class="fa-solid fa-magnifying-glass"></i></button>
+                </div>
+                <div id="search-results" class="search-results-list">
+                    <!-- Results will be injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Luxury Settings Modal -->
     <div id="settings-modal" class="modal-luxury">
         <div class="modal-blur-bg"></div>
@@ -192,12 +233,47 @@
             </div>
             <div class="modal-body">
                 <div class="setting-group">
+                    <label>اللغة / Language</label>
+                    <select id="language-switch" class="luxury-input">
+                        <option value="ar">العربية</option>
+                        <option value="en">English</option>
+                    </select>
+                </div>
+
+                <div class="setting-group">
                     <label>طريقة الحساب</label>
                     <select id="calc-method" class="luxury-input">
                         <option value="3">رابطة العالم الإسلامي</option>
                         <option value="2">الجمعية الإسلامية لأمريكا الشمالية (ISNA)</option>
                         <option value="4">جامعة أم القرى (مكة)</option>
                         <option value="5">الهيئة المصرية العامة للمساحة</option>
+                    </select>
+                </div>
+                
+                <div class="setting-group">
+                    <label>نوع التنبيه</label>
+                    <select id="notification-type" class="luxury-input">
+                        <option value="beep">رنة قصيرة (Beep)</option>
+                        <option value="adhan">أذان كامل (Full Adhan)</option>
+                        <option value="silent">صامت (Silent)</option>
+                    </select>
+                </div>
+
+                <div class="setting-group toggle-group">
+                    <label>وضع التركيز (صامت أثناء الصلاة)</label>
+                    <label class="switch-luxury">
+                        <input type="checkbox" id="focus-mode">
+                        <span class="slider-luxury"></span>
+                    </label>
+                </div>
+
+                <div class="setting-group">
+                    <label>تذكير قبل الصلاة</label>
+                    <select id="pre-reminder" class="luxury-input">
+                        <option value="0">إيقاف</option>
+                        <option value="5">قبل بـ 5 دقائق</option>
+                        <option value="10">قبل بـ 10 دقائق</option>
+                        <option value="15">قبل بـ 15 دقائق</option>
                     </select>
                 </div>
                 
@@ -234,8 +310,24 @@
         </div>
     </div>
 
+    <!-- Update Notification Toast -->
+    <div id="update-toast" class="update-toast-luxury">
+        <div class="update-toast-content">
+            <div class="update-icon">🚀</div>
+            <div class="update-text-wrapper">
+                <p id="update-msg" class="update-title">تحديث جديد متوفر!</p>
+                <p id="update-desc" class="update-subtitle">قم بالتحديث للحصول على أفضل تجربة.</p>
+            </div>
+            <div class="update-actions">
+                <button id="update-now" class="btn-update-now">تحديث الآن</button>
+                <button id="update-later" class="btn-update-later">لاحقاً</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Notification Audio -->
-    <audio id="notification-sound" src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3" preload="auto"></audio>
+    <audio id="beep-sound" src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3" preload="auto"></audio>
+    <audio id="adhan-sound" src="https://www.islamcan.com/audio/adhan/azan1.mp3" preload="auto"></audio>
 
     <script src="script.js"></script>
 </body>

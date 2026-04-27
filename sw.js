@@ -1,4 +1,4 @@
-const CACHE_NAME = 'prayer-times-v2';
+const CACHE_NAME = 'app-cache-v3';
 const ASSETS = [
     './',
     './index.html',
@@ -18,7 +18,6 @@ self.addEventListener('install', (event) => {
                 console.log('Caching assets...');
                 return cache.addAll(ASSETS);
             })
-            .then(() => self.skipWaiting())
     );
 });
 
@@ -39,10 +38,17 @@ self.addEventListener('activate', (event) => {
     );
 });
 
+// Message event - handle skipWaiting
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.action === 'skipWaiting') {
+        self.skipWaiting();
+    }
+});
+
 // Fetch event - network first with cache fallback
 self.addEventListener('fetch', (event) => {
-    // Skip non-GET requests and API requests
-    if (event.request.method !== 'GET' || event.request.url.includes('api.aladhan.com')) {
+    // Skip non-GET requests and API requests and version check
+    if (event.request.method !== 'GET' || event.request.url.includes('api.aladhan.com') || event.request.url.includes('version.json')) {
         event.respondWith(fetch(event.request).catch(() => {
             return new Response('Network error', { status: 408 });
         }));
