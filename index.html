@@ -7,8 +7,8 @@
     
     <!-- PWA & Meta Tags -->
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/2855/2855171.png">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2855/2855171.png">
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
+    <link rel="apple-touch-icon" href="icon.svg">
     <meta name="theme-color" content="#020617">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -94,6 +94,9 @@
                     <button id="notification-toggle" class="icon-btn-luxury" title="التنبيهات">
                         <i class="fa-solid fa-bell"></i>
                     </button>
+                    <button id="share-btn" class="icon-btn-luxury" title="مشاركة">
+                        <i class="fa-solid fa-share-nodes"></i>
+                    </button>
                     <button id="settings-btn" class="icon-btn-luxury" title="الإعدادات">
                         <i class="fa-solid fa-sliders"></i>
                     </button>
@@ -113,6 +116,10 @@
                             <h3 id="current-location">تحديد الموقع...</h3>
                             <p id="precise-area" class="text-muted"></p>
                         </div>
+                        <!-- Hijri Calendar Trigger -->
+                        <button id="hijri-calendar-btn" class="calendar-trigger-btn" title="التقويم الهجري">
+                            <i class="fa-solid fa-calendar-days"></i>
+                        </button>
                     </div>
 
                     <div class="next-prayer-focus">
@@ -153,19 +160,33 @@
             </section>
 
             <!-- Qibla Component (Hidden by default) -->
-            <section id="qibla-overlay" class="qibla-overlay">
-                <div class="qibla-content hero-glass">
-                    <button class="close-overlay">&times;</button>
-                    <h3>بوصلة القبلة</h3>
-                    <div class="compass-wrapper">
-                        <div class="compass-dial">
-                            <div id="compass-arrow" class="compass-needle"></div>
-                            <div class="kaaba-center">
-                                <i class="fa-solid fa-kaaba"></i>
+            <section id="qibla-overlay" class="modal-luxury qibla-overlay">
+                <div class="modal-blur-bg"></div>
+                <div class="modal-sheet qibla-sheet">
+                    <div class="modal-handle"></div>
+                    <div class="modal-header">
+                        <h2>بوصلة القبلة</h2>
+                        <button class="close-overlay close-modal">&times;</button>
+                    </div>
+                    <div class="modal-body qibla-body">
+                        <div class="compass-wrapper">
+                            <div class="compass-dial">
+                                <div id="compass-arrow" class="compass-needle"></div>
+                                <div class="kaaba-center">
+                                    <i class="fa-solid fa-kaaba"></i>
+                                </div>
                             </div>
                         </div>
+                        <div class="qibla-info-luxury">
+                            <p class="qibla-degree">الدرجة: <span id="qibla-deg">--</span>°</p>
+                            <p id="qibla-relative-wrapper" class="qibla-relative-text" style="display: none;">
+                                <span id="qibla-relative-val">--</span>° 
+                                <span id="qibla-relative-dir"></span>
+                            </p>
+                            <p id="qibla-flat-warning" class="qibla-warning-text" style="display: none; color: #f59e0b; font-size: 0.9rem; margin-top: 5px;"></p>
+                            <p class="qibla-hint">يرجى وضع الهاتف بشكل مسطح وتحريكه بشكل (8) لمعايرة البوصلة</p>
+                        </div>
                     </div>
-                    <p class="qibla-degree">الدرجة: <span id="qibla-deg">--</span>°</p>
                 </div>
             </section>
         </main>
@@ -241,12 +262,22 @@
                 </div>
 
                 <div class="setting-group">
-                    <label>طريقة الحساب</label>
+                    <label id="label-calc-method">طريقة الحساب</label>
                     <select id="calc-method" class="luxury-input">
                         <option value="3">رابطة العالم الإسلامي</option>
-                        <option value="2">الجمعية الإسلامية لأمريكا الشمالية (ISNA)</option>
                         <option value="4">جامعة أم القرى (مكة)</option>
                         <option value="5">الهيئة المصرية العامة للمساحة</option>
+                        <option value="1">جامعة العلوم الإسلامية بكراتشي</option>
+                        <option value="2">الجمعية الإسلامية لأمريكا الشمالية (ISNA)</option>
+                        <option value="13">رئاسة الشؤون الدينية (تركيا)</option>
+                        <option value="16">دبي</option>
+                        <option value="17">ماليزيا (JAKIM)</option>
+                        <option value="9">الكويت</option>
+                        <option value="10">قطر</option>
+                        <option value="11">سنغافورة (MUIS)</option>
+                        <option value="12">فرنسا (UOIF)</option>
+                        <option value="14">روسيا</option>
+                        <option value="15">لجنة رؤية الهلال العالمية</option>
                     </select>
                 </div>
                 
@@ -277,6 +308,17 @@
                     </select>
                 </div>
                 
+                <div class="setting-group">
+                    <label>تعديل التقويم الهجري (أيام)</label>
+                    <select id="hijri-offset" class="luxury-input">
+                        <option value="-2">-2</option>
+                        <option value="-1">-1</option>
+                        <option value="0" selected>0</option>
+                        <option value="1">+1</option>
+                        <option value="2">+2</option>
+                    </select>
+                </div>
+
                 <div class="setting-group row">
                     <div class="toggle-item">
                         <span>صوت التنبيه</span>
@@ -306,6 +348,36 @@
                 </div>
                 
                 <button id="save-settings" class="btn-luxury-primary">حفظ الإعدادات</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hijri Calendar Modal -->
+    <div id="hijri-modal" class="modal-luxury">
+        <div class="modal-blur-bg"></div>
+        <div class="modal-sheet calendar-sheet">
+            <div class="modal-handle"></div>
+            <div class="modal-header">
+                <div class="calendar-nav">
+                    <button id="prev-month" class="nav-btn"><i class="fa-solid fa-chevron-right"></i></button>
+                    <h2 id="calendar-month-year">رمضان 1447</h2>
+                    <button id="next-month" class="nav-btn"><i class="fa-solid fa-chevron-left"></i></button>
+                </div>
+                <button class="close-hijri-modal close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="calendar-grid-header" id="calendar-headers">
+                    <span>ح</span><span>ن</span><span>ث</span><span>ر</span><span>خ</span><span>ج</span><span>س</span>
+                </div>
+                <div id="calendar-days" class="calendar-days-grid">
+                    <!-- Days injected via JS -->
+                </div>
+                <div class="islamic-events-list">
+                    <h3>المناسبات الإسلامية</h3>
+                    <div id="events-container">
+                        <!-- Events injected via JS -->
+                    </div>
+                </div>
             </div>
         </div>
     </div>
