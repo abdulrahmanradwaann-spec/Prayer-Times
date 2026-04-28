@@ -1081,21 +1081,18 @@ async function refreshData() {
 }
 
 async function checkForUpdates(isSWTriggered = false, swWorker = null) {
+    if (isSWTriggered && swWorker) {
+        showUpdateToast({ isSWUpdate: true, worker: swWorker });
+        return;
+    }
+    
     try {
         const response = await fetch('version.json?t=' + Date.now());
         const data = await response.json();
         
         if (data.version !== CONFIG.version) {
-            // Check if user already dismissed this version in THIS session
             const dismissed = sessionStorage.getItem('dismissed_version');
-            if (dismissed === data.version && !data.forceUpdate && !isSWTriggered) return;
-
-            // If it's a SW trigger, attach the worker
-            if (isSWTriggered && swWorker) {
-                data.isSWUpdate = true;
-                data.worker = swWorker;
-            }
-
+            if (dismissed === data.version && !data.forceUpdate) return;
             showUpdateToast(data);
         }
     } catch (e) {
@@ -1106,57 +1103,51 @@ async function checkForUpdates(isSWTriggered = false, swWorker = null) {
 let isToastShowing = false;
 function showUpdateToast(data) {
     if (isToastShowing) return;
-    
     if (!DOM.updateToast) return;
 
     isToastShowing = true;
-    
     const lang = state.settings.lang || 'ar';
     const t = I18N[lang];
     
-    DOM.updateMsg.textContent = t.update_available;
-    DOM.updateDesc.textContent = (data.changelog && data.changelog[lang]) ? data.changelog[lang] : t.update_desc;
-    DOM.updateNow.textContent = t.update_now;
-    DOM.updateLater.textContent = t.update_later;
+    if (DOM.updateMsg) DOM.updateMsg.textContent = t.update_available || 'تحديث جديد متوفر!';
+    if (DOM.updateDesc) DOM.updateDesc.textContent = (data.changelog && data.changelog[lang]) ? data.changelog[lang] : (t.update_desc || 'قم بالتحديث للحصول على أفضل تجربة.');
+    
+    if (DOM.updateNow) DOM.updateNow.textContent = t.update_now || 'تحديث الآن';
+    if (DOM.updateLater) DOM.updateLater.textContent = t.update_later || 'لاحقاً';
     
     DOM.updateToast.style.display = 'block';
     setTimeout(() => DOM.updateToast.classList.add('show'), 100);
 
-    // Auto-refresh after 60 seconds if ignored (optional)
-    const autoRefreshTimeout = setTimeout(() => {
-        if (DOM.updateToast.classList.contains('show')) {
-            DOM.updateNow.click();
-        }
-    }, 60000);
-    
-    DOM.updateNow.onclick = () => {
-        clearTimeout(autoRefreshTimeout);
-        if (data.isSWUpdate && data.worker) {
-            data.worker.postMessage({ action: 'skipWaiting' });
-        } else {
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.getRegistrations().then(registrations => {
-                    for (let registration of registrations) {
-                        registration.unregister();
-                    }
-                    location.reload(true);
-                });
+    // Update Now Logic
+    if (DOM.updateNow) {
+        DOM.updateNow.onclick = () => {
+            if (data.isSWUpdate && data.worker) {
+                data.worker.postMessage({ action: 'skipWaiting' });
             } else {
                 location.reload(true);
             }
-        }
-    };
+            hideUpdateToast();
+        };
+    }
     
-    laterBtn.onclick = () => {
-        clearTimeout(autoRefreshTimeout);
-        toast.classList.remove('show');
-        // Save to sessionStorage so it doesn't show again until the next session
-        sessionStorage.setItem('dismissed_version', data.version || 'unknown');
-        setTimeout(() => {
-            toast.style.display = 'none';
-            isToastShowing = false;
-        }, 800);
-    };
+    // Update Later Logic
+    if (DOM.updateLater) {
+        DOM.updateLater.onclick = () => {
+            if (data.version) {
+                sessionStorage.setItem('dismissed_version', data.version);
+            }
+            hideUpdateToast();
+        };
+    }
+}
+
+function hideUpdateToast() {
+    if (!DOM.updateToast) return;
+    DOM.updateToast.classList.remove('show');
+    setTimeout(() => {
+        DOM.updateToast.style.display = 'none';
+        isToastShowing = false;
+    }, 600);
 }
 
 // --- UI Updates ---
@@ -2285,6 +2276,9 @@ if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js').then(registration => {
             console.log('SW registered:', registration);
+
+            // Check for updates immediately on load
+            registration.update();
 
             // Listen for updates
             registration.onupdatefound = () => {
