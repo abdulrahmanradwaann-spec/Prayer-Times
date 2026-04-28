@@ -7,7 +7,7 @@
 const CONFIG = {
     version: '2.0.0',
     ipGeoApi: 'https://ipapi.co/json/',
-    apiBase: 'http://api.aladhan.com/v1',
+    apiBase: 'https://api.aladhan.com/v1',
     defaultCity: 'Mecca',
     calcMethods: {
         0: 'Shia Ithna Asheri',
@@ -314,30 +314,56 @@ const CONFIG = {
     }
 };
 
+// --- Storage Helper ---
+const Storage = {
+    set(key, value) {
+        try {
+            const str = typeof value === 'string' ? value : JSON.stringify(value);
+            localStorage.setItem(key, str);
+            return true;
+        } catch (e) {
+            console.warn('Storage set error:', e);
+            return false;
+        }
+    },
+    get(key, defaultValue = null) {
+        try {
+            const val = localStorage.getItem(key);
+            if (val === null) return defaultValue;
+            try {
+                return JSON.parse(val);
+            } catch {
+                return val;
+            }
+        } catch (e) {
+            console.warn('Storage get error:', e);
+            return defaultValue;
+        }
+    },
+    remove(key) {
+        try {
+            localStorage.removeItem(key);
+            return true;
+        } catch (e) {
+            console.warn('Storage remove error:', e);
+            return false;
+        }
+    }
+};
+
 let state = {
     currentCity: null,
     prayerTimes: null,
     nextPrayer: null,
-    adjustments: (function() { try { return JSON.parse(localStorage.getItem('luxury_adj')) || { Fajr: 0, Dhuhr: 0, Asr: 0, Maghrib: 0, Isha: 0 }; } catch { return { Fajr: 0, Dhuhr: 0, Asr: 0, Maghrib: 0, Isha: 0 }; } })(),
-    settings: (function() { try { const s = JSON.parse(localStorage.getItem('luxury_settings')); return s || { method: 3, sound: true, vibrate: true, notifications: true, notificationType: 'beep', preReminder: 0, hijriOffset: 0, lang: 'ar', focusMode: false, theme: 'dark' }; } catch { return { method: 3, sound: true, vibrate: true, notifications: true, notificationType: 'beep', preReminder: 0, hijriOffset: 0, lang: 'ar', focusMode: false, theme: 'dark' }; } })(),
-        method: 3, // MWL
-        sound: true,
-        vibrate: true,
-        notifications: true,
-        notificationType: 'beep',
-        preReminder: 0,
-        hijriOffset: 0,
-        lang: 'ar',
-        focusMode: false,
-        theme: 'dark'
-    },
+    adjustments: Storage.get('luxury_adj', { Fajr: 0, Dhuhr: 0, Asr: 0, Maghrib: 0, Isha: 0 }),
+    settings: Storage.get('luxury_settings', { method: 3, sound: true, vibrate: true, notifications: true, notificationType: 'beep', preReminder: 0, hijriOffset: 0, lang: 'ar', focusMode: false, theme: 'dark' }),
     lastUpdatedDay: new Date().getDate(),
-    remindedPrayers: new Set(), // To avoid multiple reminders for the same prayer
+    remindedPrayers: new Set(),
     intervals: {
         countdown: null,
         clock: null
     },
-    calendarDate: new Date() // For Hijri calendar navigation
+    calendarDate: new Date()
 };
 
 const I18N = {
@@ -483,12 +509,11 @@ async function detectLocationIP() {
             }
             
             // Update precise area if available
-            const preciseEl = document.getElementById('precise-area');
-            if (preciseEl) preciseEl.textContent = region && region !== city ? region : '';
+            if (DOM.preciseArea) DOM.preciseArea.textContent = region && region !== city ? region : '';
 
-            localStorage.setItem('last_city', 'custom');
-            localStorage.setItem('custom_location', JSON.stringify(state.currentCity));
-            localStorage.setItem('ip_detected', 'true');
+            Storage.set('last_city', 'custom');
+            Storage.set('custom_location', state.currentCity);
+            Storage.set('ip_detected', 'true');
             
             return true;
         }
@@ -639,8 +664,7 @@ function applyRegionalMethod(country) {
     if (method !== null) {
         state.settings.method = method;
         localStorage.setItem('luxury_settings', JSON.stringify(state.settings));
-        const select = document.getElementById('calc-method');
-        if (select) select.value = method;
+        if (DOM.calcMethod) DOM.calcMethod.value = method;
     }
 }
 
@@ -700,12 +724,11 @@ async function detectLocationGPS() {
                 };
                 
                 // Update precise area UI
-                const preciseEl = document.getElementById('precise-area');
-                if (preciseEl) preciseEl.textContent = preciseArea;
+                if (DOM.preciseArea) DOM.preciseArea.textContent = preciseArea;
                 
-                localStorage.setItem('last_city', 'custom');
-                localStorage.setItem('custom_location', JSON.stringify(state.currentCity));
-                localStorage.removeItem('ip_detected');
+                Storage.set('last_city', 'custom');
+                Storage.set('custom_location', state.currentCity);
+                Storage.remove('ip_detected');
                 
                 resolve(true);
             },
@@ -721,7 +744,139 @@ async function detectLocationGPS() {
     });
 }
 
+// --- DOM Cache ---
+const DOM = {
+    clock: null,
+    period: null,
+    countdown: null,
+    nextPrayerName: null,
+    prayerProgress: null,
+    loader: null,
+    prayerList: null,
+    currentLocation: null,
+    hijriDate: null,
+    gregorianDate: null,
+    ramadanCountdown: null,
+    ramadanText: null,
+    compassArrow: null,
+    compassDial: null,
+    compassWrapper: null,
+    qiblaDeg: null,
+    qiblaFlatWarning: null,
+    qiblaRelativeWrapper: null,
+    qiblaRelativeVal: null,
+    qiblaRelativeDir: null,
+    dynamicBg: null,
+    adhanSound: null,
+    beepSound: null,
+    preciseArea: null,
+    calcMethod: null,
+    locationSearchInput: null,
+    updateMsg: null,
+    updateNow: null,
+    updateLater: null,
+    themeToggle: null,
+    updateToast: null,
+    updateDesc: null,
+    qiblaOverlay: null,
+    geoBtn: null,
+    settingsBtn: null,
+    saveSettings: null,
+    settingsModal: null,
+    hijriCalendarBtn: null,
+    prevMonth: null,
+    nextMonth: null,
+    qiblaBtn: null,
+    locationSearchBtn: null,
+    executeSearch: null,
+    dhikrBtn: null,
+    refreshDhikr: null,
+    shareBtn: null,
+    notificationToggle: null,
+    searchResults: null,
+    locationModal: null,
+    calendarMonthYear: null,
+    calendarDays: null,
+    eventsContainer: null,
+    dailyDhikr: null,
+    adhkarList: null,
+    languageSwitch: null,
+    soundToggle: null,
+    vibrateToggle: null,
+    focusMode: null,
+    notificationType: null,
+    preReminder: null,
+    hijriOffset: null,
+    particles: null
+};
+
+function initDOMCache() {
+    DOM.clock = document.getElementById('digital-clock');
+    DOM.period = document.getElementById('time-period');
+    DOM.countdown = document.getElementById('countdown');
+    DOM.nextPrayerName = document.getElementById('next-prayer-name');
+    DOM.prayerProgress = document.getElementById('prayer-progress');
+    DOM.loader = document.getElementById('loader');
+    DOM.prayerList = document.getElementById('prayer-list');
+    DOM.currentLocation = document.getElementById('current-location');
+    DOM.hijriDate = document.getElementById('hijri-date');
+    DOM.gregorianDate = document.getElementById('gregorian-date');
+    DOM.ramadanCountdown = document.getElementById('ramadan-countdown');
+    DOM.ramadanText = document.getElementById('ramadan-text');
+    DOM.compassArrow = document.getElementById('compass-arrow');
+    DOM.compassDial = document.querySelector('.compass-dial');
+    DOM.compassWrapper = document.querySelector('.compass-wrapper');
+    DOM.qiblaDeg = document.getElementById('qibla-deg');
+    DOM.qiblaFlatWarning = document.getElementById('qibla-flat-warning');
+    DOM.qiblaRelativeWrapper = document.getElementById('qibla-relative-wrapper');
+    DOM.qiblaRelativeVal = document.getElementById('qibla-relative-val');
+    DOM.qiblaRelativeDir = document.getElementById('qibla-relative-dir');
+    DOM.dynamicBg = document.getElementById('dynamic-bg');
+    DOM.adhanSound = document.getElementById('adhan-sound');
+    DOM.beepSound = document.getElementById('beep-sound');
+    DOM.preciseArea = document.getElementById('precise-area');
+    DOM.calcMethod = document.getElementById('calc-method');
+    DOM.locationSearchInput = document.getElementById('location-search-input');
+    DOM.updateMsg = document.getElementById('update-msg');
+    DOM.updateNow = document.getElementById('update-now');
+    DOM.updateLater = document.getElementById('update-later');
+    DOM.themeToggle = document.getElementById('theme-toggle');
+    DOM.updateToast = document.getElementById('update-toast');
+    DOM.updateDesc = document.getElementById('update-desc');
+    DOM.qiblaOverlay = document.getElementById('qibla-overlay');
+    DOM.geoBtn = document.getElementById('geo-btn');
+    DOM.settingsBtn = document.getElementById('settings-btn');
+    DOM.saveSettings = document.getElementById('save-settings');
+    DOM.settingsModal = document.getElementById('settings-modal');
+    DOM.hijriCalendarBtn = document.getElementById('hijri-calendar-btn');
+    DOM.prevMonth = document.getElementById('prev-month');
+    DOM.nextMonth = document.getElementById('next-month');
+    DOM.qiblaBtn = document.getElementById('qibla-btn');
+    DOM.locationSearchBtn = document.getElementById('location-search-btn');
+    DOM.executeSearch = document.getElementById('execute-search');
+    DOM.dhikrBtn = document.getElementById('dhikr-btn');
+    DOM.refreshDhikr = document.getElementById('refresh-dhikr');
+    DOM.shareBtn = document.getElementById('share-btn');
+    DOM.notificationToggle = document.getElementById('notification-toggle');
+    DOM.searchResults = document.getElementById('search-results');
+    DOM.locationModal = document.getElementById('location-modal');
+    DOM.calendarMonthYear = document.getElementById('calendar-month-year');
+    DOM.calendarDays = document.getElementById('calendar-days');
+    DOM.eventsContainer = document.getElementById('events-container');
+    DOM.dailyDhikr = document.getElementById('daily-dhikr');
+    DOM.adhkarList = document.getElementById('adhkar-list');
+    DOM.languageSwitch = document.getElementById('language-switch');
+    DOM.soundToggle = document.getElementById('sound-toggle');
+    DOM.vibrateToggle = document.getElementById('vibrate-toggle');
+    DOM.focusMode = document.getElementById('focus-mode');
+    DOM.notificationType = document.getElementById('notification-type');
+    DOM.preReminder = document.getElementById('pre-reminder');
+    DOM.hijriOffset = document.getElementById('hijri-offset');
+    DOM.particles = document.getElementById('particles');
+}
+
 async function init() {
+    initDOMCache();
     applyLanguage();
     applyTheme();
     setupUIListeners();
@@ -732,7 +887,7 @@ async function init() {
     updateDynamicBackground(new Date().getHours());
     
     // First visit? Try IP geolocation then GPS
-    const savedCity = localStorage.getItem('last_city');
+    const savedCity = Storage.get('last_city');
     
     if (!savedCity || savedCity === 'null' || savedCity === null) {
         // First visit - try IP geolocation first (fast, no permission needed)
@@ -748,13 +903,13 @@ async function init() {
             state.currentCity = CONFIG.cities[CONFIG.defaultCity];
         }
     } else if (savedCity === 'custom') {
-        const customLoc = JSON.parse(localStorage.getItem('custom_location') || 'null');
+        const customLoc = Storage.get('custom_location');
         if (customLoc && customLoc.lat && customLoc.lng) {
             state.currentCity = customLoc;
         } else {
             // Invalid custom location, fall back to default
             state.currentCity = CONFIG.cities[CONFIG.defaultCity];
-            localStorage.setItem('last_city', CONFIG.defaultCity);
+            Storage.set('last_city', CONFIG.defaultCity);
         }
     } else if (savedCity && CONFIG.cities[savedCity]) {
         state.currentCity = CONFIG.cities[savedCity];
@@ -775,11 +930,10 @@ async function init() {
     
     // Hide loader with Apple-style delay
     setTimeout(() => {
-        const loader = document.getElementById('loader');
-        if (loader) {
-            loader.style.opacity = '0';
+        if (DOM.loader) {
+            DOM.loader.style.opacity = '0';
             setTimeout(() => {
-                loader.style.display = 'none';
+                DOM.loader.style.display = 'none';
                 // Trigger fade-up animations for cards
                 document.querySelectorAll('.fade-up').forEach((el, i) => {
                     setTimeout(() => el.classList.add('visible'), i * 150);
@@ -801,7 +955,7 @@ function applyLanguage() {
     const nextTitle = document.querySelector('.next-title');
     if (nextTitle) nextTitle.textContent = t.next_prayer;
 
-    const searchInput = document.getElementById('location-search-input');
+    const searchInput = DOM.locationSearchInput;
     if (searchInput) searchInput.placeholder = t.search_placeholder;
     
     // Settings
@@ -849,15 +1003,11 @@ function applyLanguage() {
     }
 
     // Update Toast (if visible)
-    const updateMsg = document.getElementById('update-msg');
-    if (updateMsg) {
-        updateMsg.textContent = t.update_available;
+    if (DOM.updateMsg) {
+        DOM.updateMsg.textContent = t.update_available;
 
-        const updateNowBtn = document.getElementById('update-now');
-        if (updateNowBtn) updateNowBtn.textContent = t.update_now;
-
-        const updateLaterBtn = document.getElementById('update-later');
-        if (updateLaterBtn) updateLaterBtn.textContent = t.update_later;
+        if (DOM.updateNow) DOM.updateNow.textContent = t.update_now;
+        if (DOM.updateLater) DOM.updateLater.textContent = t.update_later;
     }
 
     // Refresh data to update date formatting and prayer names
@@ -870,14 +1020,17 @@ function applyLanguage() {
 function applyTheme() {
     const isLight = state.settings.theme === 'light';
     document.body.classList.toggle('light-mode', isLight);
-    const themeBtn = document.getElementById('theme-toggle');
-    if (themeBtn) {
-        themeBtn.innerHTML = isLight ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
+    if (DOM.themeToggle) {
+        DOM.themeToggle.innerHTML = isLight ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
     }
 }
 
 // --- API & Data Handling ---
 async function refreshData() {
+    if (!state.currentCity || !state.currentCity.lat || !state.currentCity.lng) {
+        console.warn("No city coordinates available for refreshData");
+        return;
+    }
     try {
         // Always use coordinates for maximum accuracy
         const url = `${CONFIG.apiBase}/timings?latitude=${state.currentCity.lat}&longitude=${state.currentCity.lng}&method=${state.settings.method}`;
@@ -891,7 +1044,7 @@ async function refreshData() {
         if (data.code === 200 && data.data && data.data.timings) {
             state.prayerTimes = data.data.timings;
             state.hijriData = data.data.date.hijri;
-            localStorage.setItem('cached_prayers', JSON.stringify(data.data));
+            Storage.set('cached_prayers', data.data);
             updateStaticUI();
             updatePrayerGrid();
         } else {
@@ -900,17 +1053,12 @@ async function refreshData() {
     } catch (error) {
         console.warn("Prayer API Error, using cache...", error.message);
         try {
-            const cachedStr = localStorage.getItem('cached_prayers');
-            if (cachedStr) {
-                const cached = JSON.parse(cachedStr);
-                if (cached && cached.timings) {
-                    state.prayerTimes = cached.timings;
-                    state.hijriData = cached.date?.hijri;
-                    updateStaticUI();
-                    updatePrayerGrid();
-                } else {
-                    throw new Error('Invalid cache data');
-                }
+            const cached = Storage.get('cached_prayers');
+            if (cached && cached.timings) {
+                state.prayerTimes = cached.timings;
+                state.hijriData = cached.date?.hijri;
+                updateStaticUI();
+                updatePrayerGrid();
             } else {
                 throw new Error('No cache available');
             }
@@ -959,34 +1107,29 @@ let isToastShowing = false;
 function showUpdateToast(data) {
     if (isToastShowing) return;
     
-    const toast = document.getElementById('update-toast');
-    if (!toast) return;
+    if (!DOM.updateToast) return;
 
     isToastShowing = true;
-    const msg = document.getElementById('update-msg');
-    const desc = document.getElementById('update-desc');
-    const nowBtn = document.getElementById('update-now');
-    const laterBtn = document.getElementById('update-later');
     
     const lang = state.settings.lang || 'ar';
     const t = I18N[lang];
     
-    msg.textContent = t.update_available;
-    desc.textContent = (data.changelog && data.changelog[lang]) ? data.changelog[lang] : t.update_desc;
-    nowBtn.textContent = t.update_now;
-    laterBtn.textContent = t.update_later;
+    DOM.updateMsg.textContent = t.update_available;
+    DOM.updateDesc.textContent = (data.changelog && data.changelog[lang]) ? data.changelog[lang] : t.update_desc;
+    DOM.updateNow.textContent = t.update_now;
+    DOM.updateLater.textContent = t.update_later;
     
-    toast.style.display = 'block';
-    setTimeout(() => toast.classList.add('show'), 100);
+    DOM.updateToast.style.display = 'block';
+    setTimeout(() => DOM.updateToast.classList.add('show'), 100);
 
     // Auto-refresh after 60 seconds if ignored (optional)
     const autoRefreshTimeout = setTimeout(() => {
-        if (toast.classList.contains('show')) {
-            nowBtn.click();
+        if (DOM.updateToast.classList.contains('show')) {
+            DOM.updateNow.click();
         }
     }, 60000);
     
-    nowBtn.onclick = () => {
+    DOM.updateNow.onclick = () => {
         clearTimeout(autoRefreshTimeout);
         if (data.isSWUpdate && data.worker) {
             data.worker.postMessage({ action: 'skipWaiting' });
@@ -1023,9 +1166,8 @@ function updateStaticUI() {
     const lang = state.settings.lang || 'ar';
     const locale = lang === 'ar' ? 'ar-YE' : 'en-US';
     
-    const gregEl = document.getElementById('gregorian-date');
-    if (gregEl) {
-        gregEl.textContent = now.toLocaleDateString(locale, { 
+    if (DOM.gregorianDate) {
+        DOM.gregorianDate.textContent = now.toLocaleDateString(locale, { 
             weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
         });
     }
@@ -1042,10 +1184,9 @@ function updateStaticUI() {
         const hMonth = hParts.find(p => p.type === 'month')?.value || '';
         const hYear = hParts.find(p => p.type === 'year')?.value || '';
 
-        const hijriEl = document.getElementById('hijri-date');
-        if (hijriEl) {
+        if (DOM.hijriDate) {
             if (lang === 'ar') {
-                hijriEl.textContent = `${hDay} ${hMonth} ${hYear} هـ`;
+                DOM.hijriDate.textContent = `${hDay} ${hMonth} ${hYear} هـ`;
             } else {
                 const hFormatterEn = new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', {
                     day: 'numeric', month: 'long', year: 'numeric'
@@ -1054,18 +1195,17 @@ function updateStaticUI() {
                 const hDayEn = hPartsEn.find(p => p.type === 'day')?.value || '';
                 const hMonthEn = hPartsEn.find(p => p.type === 'month')?.value || '';
                 const hYearEn = hPartsEn.find(p => p.type === 'year')?.value || '';
-                hijriEl.textContent = `${hDayEn} ${hMonthEn} ${hYearEn} AH`;
+                DOM.hijriDate.textContent = `${hDayEn} ${hMonthEn} ${hYearEn} AH`;
             }
         }
     } catch (e) {
         console.warn("Hijri formatting error, using fallback", e);
-        const hijriEl = document.getElementById('hijri-date');
-        if (hijriEl && state.hijriData) {
+        if (DOM.hijriDate && state.hijriData) {
             if (lang === 'ar') {
-                hijriEl.textContent = 
+                DOM.hijriDate.textContent = 
                     `${state.hijriData.day} ${state.hijriData.month?.ar || ''} ${state.hijriData.year} هـ`;
             } else {
-                hijriEl.textContent = 
+                DOM.hijriDate.textContent = 
                     `${state.hijriData.day} ${state.hijriData.month?.en || ''} ${state.hijriData.year} AH`;
             }
         }
@@ -1081,23 +1221,17 @@ function updateStaticUI() {
             locationText += lang === 'ar' ? `، ${countryDisplay}` : `, ${countryDisplay}`;
         }
         
-        const locEl = document.getElementById('current-location');
-        if (locEl) locEl.textContent = locationText;
+        if (DOM.currentLocation) DOM.currentLocation.textContent = locationText;
     }
 
     // Ramadan Countdown
-    updateRamadanCountdown();
+    updateRamadanCountdown(hijriDateWithOffset);
 }
 
-function updateRamadanCountdown() {
+function updateRamadanCountdown(hijriDateWithOffset = getCorrectedHijriDate()) {
     const lang = state.settings.lang || 'ar';
     const t = I18N[lang];
-    const ramadanEl = document.getElementById('ramadan-countdown');
-    const textEl = document.getElementById('ramadan-text');
-    if (!ramadanEl || !textEl) return;
-
-    // Use the same logic as updateStaticUI to get the corrected Hijri date
-    const hijriDateWithOffset = getCorrectedHijriDate();
+    if (!DOM.ramadanCountdown || !DOM.ramadanText) return;
 
     try {
         const hFormatter = new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', {
@@ -1108,8 +1242,8 @@ function updateRamadanCountdown() {
         const hMonth = parseInt(hParts.find(p => p.type === 'month').value);
 
         if (hMonth === 9) {
-            ramadanEl.style.display = 'flex';
-            textEl.textContent = lang === 'ar' ? "رمضان مبارك!" : "Ramadan Mubarak!";
+            DOM.ramadanCountdown.style.display = 'flex';
+            DOM.ramadanText.textContent = lang === 'ar' ? "رمضان مبارك!" : "Ramadan Mubarak!";
             return;
         }
 
@@ -1119,14 +1253,14 @@ function updateRamadanCountdown() {
         const totalDays = ((monthsToRamadan - 1) * 29.5) + daysRemainingInMonth;
         
         if (totalDays < 60) {
-            ramadanEl.style.display = 'flex';
-            textEl.textContent = `${t.ramadan_countdown}: ${Math.round(totalDays)} ${t.days}`;
+            DOM.ramadanCountdown.style.display = 'flex';
+            DOM.ramadanText.textContent = `${t.ramadan_countdown}: ${Math.round(totalDays)} ${t.days}`;
         } else {
-            ramadanEl.style.display = 'none';
+            DOM.ramadanCountdown.style.display = 'none';
         }
     } catch (e) {
         console.error("Ramadan countdown error", e);
-        ramadanEl.style.display = 'none';
+        DOM.ramadanCountdown.style.display = 'none';
     }
 }
 
@@ -1140,8 +1274,7 @@ function formatTime12h(timeStr) {
 }
 
 function updatePrayerGrid() {
-    const grid = document.getElementById('prayer-list');
-    if (!grid || !state.prayerTimes) return;
+    if (!DOM.prayerList || !state.prayerTimes) return;
 
     const prayers = [
         { id: 'Fajr', icon: 'fa-cloud-moon' },
@@ -1152,7 +1285,7 @@ function updatePrayerGrid() {
         { id: 'Isha', icon: 'fa-stars' }
     ];
 
-    grid.innerHTML = prayers.map(p => {
+    DOM.prayerList.innerHTML = prayers.map(p => {
         const rawTime = applyAdj(state.prayerTimes[p.id], state.adjustments[p.id] || 0);
         const displayTime = formatTime12h(rawTime);
         const name = getPrayerName(p.id);
@@ -1210,20 +1343,23 @@ function updateLogic() {
     if (!state.prayerTimes) return;
 
     const now = new Date();
+    const currentSeconds = now.getSeconds();
     
-    // Update Digital Clock
+    // Update Digital Clock (Every Second)
     const hours = now.getHours();
     const displayHours = hours % 12 || 12;
     const minutes = now.getMinutes().toString().padStart(2, '0');
-    const seconds = now.getSeconds().toString().padStart(2, '0');
+    const seconds = currentSeconds.toString().padStart(2, '0');
     const period = hours >= 12 ? (state.settings.lang === 'ar' ? 'م' : 'PM') : (state.settings.lang === 'ar' ? 'ص' : 'AM');
     
-    const clockEl = document.getElementById('digital-clock');
-    const periodEl = document.getElementById('time-period');
-    if (clockEl) clockEl.textContent = `${displayHours}:${minutes}:${seconds}`;
-    if (periodEl) periodEl.textContent = period;
+    if (DOM.clock) DOM.clock.textContent = `${displayHours}:${minutes}:${seconds}`;
+    if (DOM.period) DOM.period.textContent = period;
     
-    updateDynamicBackground(hours);
+    // Update Dynamic Background (Every Minute or when hour changes)
+    if (currentSeconds === 0 || !state.lastBackgroundUpdateHour || state.lastBackgroundUpdateHour !== hours) {
+        updateDynamicBackground(hours);
+        state.lastBackgroundUpdateHour = hours;
+    }
     
     // Check for day change
     if (now.getDate() !== state.lastUpdatedDay) {
@@ -1233,7 +1369,7 @@ function updateLogic() {
         return;
     }
 
-    const currentMin = now.getHours() * 60 + now.getMinutes();
+    const currentMin = hours * 60 + now.getMinutes();
     
     const prayers = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
     let next = null;
@@ -1257,27 +1393,53 @@ function updateLogic() {
         prev = { id: 'Isha', min: timeToMin(applyAdj(state.prayerTimes.Isha, state.adjustments.Isha)) };
     }
 
-    // Update Hero UI
-    const nextPrayerNameEl = document.getElementById('next-prayer-name');
-    if (nextPrayerNameEl) nextPrayerNameEl.textContent = getPrayerName(next.id);
+    // Update Hero UI (Only if next prayer changed or on load)
+    if (!state.lastNextPrayerId || state.lastNextPrayerId !== next.id) {
+        if (DOM.nextPrayerName) DOM.nextPrayerName.textContent = getPrayerName(next.id);
+        state.lastNextPrayerId = next.id;
+        
+        // Active Card Highlight & Status Updates (Only when prayer changes)
+        updatePrayerCards(prev.id, next.id);
+    }
 
-    // Countdown
+    // Countdown (Every Second)
     const diff = next.min - currentMin;
     const h = Math.floor(diff / 60);
     const m = diff % 60;
-    const s = 59 - now.getSeconds();
-    const countdownEl = document.getElementById('countdown');
-    if (countdownEl) countdownEl.textContent =
-        `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    const s = 59 - currentSeconds;
+    if (DOM.countdown) {
+        DOM.countdown.textContent =
+            `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }
 
     // Progress Bar (Actual duration calculation)
     const totalDuration = next.min - prev.min;
     const elapsed = currentMin - prev.min;
     const progress = Math.max(0, Math.min(100, (elapsed / totalDuration) * 100));
-    const progressEl = document.getElementById('prayer-progress');
-    if (progressEl) progressEl.style.width = `${progress}%`;
+    if (DOM.prayerProgress) DOM.prayerProgress.style.width = `${progress}%`;
 
-    // Active Card Highlight & Status Updates
+    // Notification Check (Robust check)
+    const totalDiffSeconds = (diff * 60) + s;
+    
+    if (totalDiffSeconds === 0) {
+        const prayerKey = `${next.id}_adhan_${state.lastUpdatedDay}`;
+        if (!state.remindedPrayers.has(prayerKey)) {
+            triggerNotification(next.id);
+            state.remindedPrayers.add(prayerKey);
+        }
+    }
+
+    // Pre-reminder Check
+    if (state.settings.preReminder > 0 && totalDiffSeconds === (state.settings.preReminder * 60)) {
+        const reminderKey = `${next.id}_reminder_${state.lastUpdatedDay}`;
+        if (!state.remindedPrayers.has(reminderKey)) {
+            triggerPreReminder(next.id, state.settings.preReminder);
+            state.remindedPrayers.add(reminderKey);
+        }
+    }
+}
+
+function updatePrayerCards(currentId, nextId) {
     const lang = state.settings.lang || 'ar';
     const t = I18N[lang];
     
@@ -1286,12 +1448,11 @@ function updateLogic() {
         const id = c.id.replace('card-', '');
         const statusEl = document.getElementById(`status-${id}`);
         if (statusEl) {
-            statusEl.textContent = ""; // Clear by default or set to a default state
+            statusEl.textContent = "";
             statusEl.style.display = 'none';
         }
     });
 
-    const currentId = prev.id;
     const activeCard = document.getElementById(`card-${currentId}`);
     if (activeCard) {
         activeCard.classList.add('active');
@@ -1302,7 +1463,6 @@ function updateLogic() {
         }
     }
 
-    const nextId = next.id;
     const upcomingCard = document.getElementById(`card-${nextId}`);
     if (upcomingCard && nextId !== currentId) {
         upcomingCard.classList.add('upcoming');
@@ -1310,24 +1470,6 @@ function updateLogic() {
         if (statusEl) {
             statusEl.textContent = t.upcoming;
             statusEl.style.display = 'block';
-        }
-    }
-
-    // Notification Check
-    if (diff === 0 && s === 0) {
-        const prayerKey = `${next.id}_adhan_${state.lastUpdatedDay}`;
-        if (!state.remindedPrayers.has(prayerKey)) {
-            triggerNotification(next.id);
-            state.remindedPrayers.add(prayerKey);
-        }
-    }
-
-    // Pre-reminder Check
-    if (state.settings.preReminder > 0 && diff === state.settings.preReminder && s === 0) {
-        const reminderKey = `${next.id}_reminder_${state.lastUpdatedDay}`;
-        if (!state.remindedPrayers.has(reminderKey)) {
-            triggerPreReminder(next.id, state.settings.preReminder);
-            state.remindedPrayers.add(reminderKey);
         }
     }
 }
@@ -1362,6 +1504,24 @@ function getPrayerName(id) {
 
 // --- Interactions ---
 function setupUIListeners() {
+    // Online/Offline Status
+    window.addEventListener('online', () => {
+        console.log('App is online');
+        refreshData();
+    });
+    window.addEventListener('offline', () => {
+        console.log('App is offline');
+    });
+
+    // Global Error Handling
+    window.addEventListener('error', (event) => {
+        console.error('Global Error:', event.error);
+    });
+
+    window.addEventListener('unhandledrejection', (event) => {
+        console.error('Unhandled Promise Rejection:', event.reason);
+    });
+
     let isTransitioning = false;
 
     // Generic Modal Handler
@@ -1374,7 +1534,6 @@ function setupUIListeners() {
         if (modalId === 'settings-modal') loadSettingsToUI();
         if (modalId === 'qibla-overlay') {
             updateQibla();
-            startCompass();
         }
         if (modalId === 'hijri-modal' && typeof renderHijriCalendar === 'function') {
             renderHijriCalendar();
@@ -1427,49 +1586,42 @@ function setupUIListeners() {
                 closeModal(modal);
                 if (modal.id === 'qibla-overlay') stopCompass();
             });
-            const qiblaOverlay = document.getElementById('qibla-overlay');
-            if (qiblaOverlay && qiblaOverlay.style.display === 'flex') {
-                qiblaOverlay.style.display = 'none';
+            if (DOM.qiblaOverlay && DOM.qiblaOverlay.style.display === 'flex') {
+                DOM.qiblaOverlay.style.display = 'none';
                 stopCompass();
             }
         }
     });
 
     // Geolocation btn in Hero
-    const geoBtn = document.getElementById('geo-btn');
-    if (geoBtn) geoBtn.onclick = handleGeolocation;
+    if (DOM.geoBtn) DOM.geoBtn.onclick = handleGeolocation;
 
-    const settingsBtnEl = document.getElementById('settings-btn');
-    if (settingsBtnEl) settingsBtnEl.onclick = () => openModal('settings-modal');
+    if (DOM.settingsBtn) DOM.settingsBtn.onclick = () => openModal('settings-modal');
 
-    const saveSettingsBtnEl = document.getElementById('save-settings');
-    if (saveSettingsBtnEl) {
-        saveSettingsBtnEl.onclick = () => {
+    if (DOM.saveSettings) {
+        DOM.saveSettings.onclick = () => {
             saveSettingsFromUI();
-            closeModal(document.getElementById('settings-modal'));
+            closeModal(DOM.settingsModal);
             applyLanguage();
             refreshData();
         };
     }
 
     // Hijri Calendar Modal
-    const hijriBtn = document.getElementById('hijri-calendar-btn');
-    if (hijriBtn) {
-        hijriBtn.onclick = () => openModal('hijri-modal');
+    if (DOM.hijriCalendarBtn) {
+        DOM.hijriCalendarBtn.onclick = () => openModal('hijri-modal');
     }
 
-    const prevMonthBtn = document.getElementById('prev-month');
-    if (prevMonthBtn) {
-        prevMonthBtn.onclick = () => {
+    if (DOM.prevMonth) {
+        DOM.prevMonth.onclick = () => {
             state.calendarDate.setDate(1);
             state.calendarDate.setMonth(state.calendarDate.getMonth() - 1);
             renderHijriCalendar();
         };
     }
 
-    const nextMonthBtn = document.getElementById('next-month');
-    if (nextMonthBtn) {
-        nextMonthBtn.onclick = () => {
+    if (DOM.nextMonth) {
+        DOM.nextMonth.onclick = () => {
             state.calendarDate.setDate(1);
             state.calendarDate.setMonth(state.calendarDate.getMonth() + 1);
             renderHijriCalendar();
@@ -1477,28 +1629,23 @@ function setupUIListeners() {
     }
 
     // Qibla Overlay
-    const qiblaBtn = document.getElementById('qibla-btn');
-    if (qiblaBtn) {
-        qiblaBtn.onclick = () => openModal('qibla-overlay');
+    if (DOM.qiblaBtn) {
+        DOM.qiblaBtn.onclick = () => openModal('qibla-overlay');
     }
 
-    const locationSearchBtn = document.getElementById('location-search-btn');
-    if (locationSearchBtn) locationSearchBtn.onclick = () => openModal('location-modal');
+    if (DOM.locationSearchBtn) DOM.locationSearchBtn.onclick = () => openModal('location-modal');
 
-    const executeSearchBtn = document.getElementById('execute-search');
-    if (executeSearchBtn) executeSearchBtn.onclick = performLocationSearch;
+    if (DOM.executeSearch) DOM.executeSearch.onclick = performLocationSearch;
 
-    const locationSearchInput = document.getElementById('location-search-input');
-    if (locationSearchInput) {
-        locationSearchInput.onkeypress = (e) => {
+    if (DOM.locationSearchInput) {
+        DOM.locationSearchInput.onkeypress = (e) => {
             if (e.key === 'Enter') performLocationSearch();
         };
     }
 
     // Adhkar Modal
-    const dhikrBtn = document.getElementById('dhikr-btn');
-    if (dhikrBtn) {
-        dhikrBtn.onclick = () => {
+    if (DOM.dhikrBtn) {
+        DOM.dhikrBtn.onclick = () => {
             openModal('adhkar-modal');
             renderAdhkar('morning');
         };
@@ -1513,26 +1660,23 @@ function setupUIListeners() {
     });
 
     // Dhikr
-    const refreshDhikrBtn = document.getElementById('refresh-dhikr');
-    if (refreshDhikrBtn) {
-        refreshDhikrBtn.onclick = shuffleDhikr;
+    if (DOM.refreshDhikr) {
+        DOM.refreshDhikr.onclick = shuffleDhikr;
         shuffleDhikr();
     }
 
     // Theme Toggle
-    const themeBtn = document.getElementById('theme-toggle');
-    if (themeBtn) {
-        themeBtn.onclick = () => {
+    if (DOM.themeToggle) {
+        DOM.themeToggle.onclick = () => {
             state.settings.theme = state.settings.theme === 'dark' ? 'light' : 'dark';
-            localStorage.setItem('luxury_settings', JSON.stringify(state.settings));
+            Storage.set('luxury_settings', state.settings);
             applyTheme();
         };
     }
 
     // Share Button
-    const shareBtn = document.getElementById('share-btn');
-    if (shareBtn) {
-        shareBtn.onclick = async () => {
+    if (DOM.shareBtn) {
+        DOM.shareBtn.onclick = async () => {
             const lang = state.settings.lang || 'ar';
             const title = lang === 'ar' ? 'تطبيق مواقيت الصلاة الفاخر' : 'Luxury Prayer Times App';
             const text = lang === 'ar' ? 'تحقق من مواقيت الصلاة، القبلة، والتقويم الهجري في هذا التطبيق الرائع!' : 'Check prayer times, Qibla, and Hijri calendar in this luxury app!';
@@ -1545,12 +1689,11 @@ function setupUIListeners() {
                     console.log('Share failed:', err);
                 }
             } else {
-                // Fallback: Copy to clipboard
                 try {
                     await navigator.clipboard.writeText(`${text}\n${url}`);
-                    const originalColor = shareBtn.style.color;
-                    shareBtn.style.color = 'var(--success-color, #10b981)';
-                    setTimeout(() => shareBtn.style.color = originalColor, 2000);
+                    const originalColor = DOM.shareBtn.style.color;
+                    DOM.shareBtn.style.color = 'var(--success-color, #10b981)';
+                    setTimeout(() => DOM.shareBtn.style.color = originalColor, 2000);
                     alert(lang === 'ar' ? 'تم نسخ الرابط!' : 'Link copied!');
                 } catch (err) {
                     console.error('Clipboard failed:', err);
@@ -1560,17 +1703,16 @@ function setupUIListeners() {
     }
 
     // Notification Toggle Button
-    const notifBtn = document.getElementById('notification-toggle');
-    if (notifBtn) {
-        notifBtn.onclick = () => {
+    if (DOM.notificationToggle) {
+        DOM.notificationToggle.onclick = () => {
             if (Notification.permission === 'default') {
                 Notification.requestPermission().then(permission => {
                     updateNotifBtnUI(permission === 'granted');
                 });
             } else {
                 state.settings.notifications = !state.settings.notifications;
-                localStorage.setItem('luxury_settings', JSON.stringify(state.settings));
-                updateNotifBtnUI(state.settings.notifications);
+                Storage.set('luxury_settings', state.settings);
+                updateNotifBtnUI(state.settings.notifications && Notification.permission === 'granted');
             }
         };
         updateNotifBtnUI(state.settings.notifications && Notification.permission === 'granted');
@@ -1578,8 +1720,8 @@ function setupUIListeners() {
 }
 
 function updateNotifBtnUI(isEnabled) {
-    const btn = document.getElementById('notification-toggle');
-    if (!btn) return;
+    if (!DOM.notificationToggle) return;
+    const btn = DOM.notificationToggle;
     const icon = btn.querySelector('i');
     if (isEnabled) {
         icon.className = 'fa-solid fa-bell';
@@ -1591,7 +1733,8 @@ function updateNotifBtnUI(isEnabled) {
 }
 
 async function handleGeolocation() {
-    const geoBtn = document.getElementById('geo-btn');
+    if (!DOM.geoBtn) return;
+    const geoBtn = DOM.geoBtn;
     const originalContent = geoBtn.innerHTML;
     
     try {
@@ -1600,7 +1743,6 @@ async function handleGeolocation() {
         
         const success = await detectLocationGPS();
         if (success) {
-            // Apply regional method based on detected country
             if (state.currentCity.country) {
                 applyRegionalMethod(state.currentCity.country);
             }
@@ -1617,22 +1759,22 @@ async function handleGeolocation() {
 }
 
 async function performLocationSearch() {
-    const query = document.getElementById('location-search-input').value.trim();
-    if (query.length < 3) return alert("يرجى كتابة 3 أحرف على الأقل");
+    if (!DOM.locationSearchInput || !DOM.searchResults) return;
+    const query = DOM.locationSearchInput.value.trim();
+    if (query.length < 3) return alert(state.settings.lang === 'ar' ? "يرجى كتابة 3 أحرف على الأقل" : "Please enter at least 3 characters");
 
-    const resultsContainer = document.getElementById('search-results');
-    resultsContainer.innerHTML = '<div class="loader-bar-container"><div class="loader-bar"></div></div>';
+    DOM.searchResults.innerHTML = '<div class="loader-bar-container"><div class="loader-bar"></div></div>';
 
     try {
         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1&accept-language=ar`);
         const data = await response.json();
         
         if (data.length === 0) {
-            resultsContainer.innerHTML = '<p class="text-center">لم يتم العثور على نتائج</p>';
+            DOM.searchResults.innerHTML = '<p class="text-center">' + (state.settings.lang === 'ar' ? 'لم يتم العثور على نتائج' : 'No results found') + '</p>';
             return;
         }
 
-        resultsContainer.innerHTML = data.map(item => `
+        DOM.searchResults.innerHTML = data.map(item => `
             <div class="search-result-item" onclick="selectSearchedLocation(${item.lat}, ${item.lon}, '${item.address.city || item.address.town || item.address.state || item.display_name.split(',')[0]}', '${item.address.country || ''}', '${item.display_name}')">
                 <div class="result-info">
                     <span class="city-name">${item.address.city || item.address.town || item.address.state || item.display_name.split(',')[0]}</span>
@@ -1643,7 +1785,7 @@ async function performLocationSearch() {
         `).join('');
     } catch (error) {
         console.error("Search error", error);
-        resultsContainer.innerHTML = '<p class="text-center">حدث خطأ أثناء البحث</p>';
+        DOM.searchResults.innerHTML = '<p class="text-center">' + (state.settings.lang === 'ar' ? 'حدث خطأ أثناء البحث' : 'Search error occurred') + '</p>';
     }
 }
 
@@ -1666,8 +1808,8 @@ async function selectSearchedLocation(lat, lon, nameAr, country, displayName) {
         isAutoDetected: true
     };
     
-    localStorage.setItem('last_city', 'custom');
-    localStorage.setItem('custom_location', JSON.stringify(state.currentCity));
+    Storage.set('last_city', 'custom');
+    Storage.set('custom_location', state.currentCity);
     
     // Apply regional method if available
     if (country) {
@@ -1677,13 +1819,11 @@ async function selectSearchedLocation(lat, lon, nameAr, country, displayName) {
     // Update precise area display
     const parts = displayName.split(',');
     const preciseArea = parts.length > 1 ? parts.slice(1).join(',').trim() : '';
-    const preciseEl = document.getElementById('precise-area');
-    if (preciseEl) preciseEl.textContent = preciseArea;
+    if (DOM.preciseArea) DOM.preciseArea.textContent = preciseArea;
     
-    const modal = document.getElementById('location-modal');
-    if (modal) {
-        modal.classList.remove('open');
-        setTimeout(() => modal.style.display = 'none', 500);
+    if (DOM.locationModal) {
+        DOM.locationModal.classList.remove('open');
+        setTimeout(() => DOM.locationModal.style.display = 'none', 500);
     }
     
     await refreshData();
@@ -1701,8 +1841,7 @@ function updateQibla() {
     let qibla = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
     state.qiblaAngle = qibla;
     
-    const degEl = document.getElementById('qibla-deg');
-    if (degEl) degEl.textContent = Math.round(qibla);
+    if (DOM.qiblaDeg) DOM.qiblaDeg.textContent = Math.round(qibla);
 
     startCompass();
 }
@@ -1745,14 +1884,13 @@ function handleOrientation(event) {
     const gamma = event.gamma; // -90 to 90 (left-right tilt)
     const isFlat = Math.abs(beta) < 20 && Math.abs(gamma) < 20;
 
-    const flatWarning = document.getElementById('qibla-flat-warning');
-    if (flatWarning) {
+    if (DOM.qiblaFlatWarning) {
         if (!isFlat) {
             const lang = state.settings.lang || 'ar';
-            flatWarning.textContent = I18N[lang].qibla_not_flat;
-            flatWarning.style.display = 'block';
+            DOM.qiblaFlatWarning.textContent = I18N[lang].qibla_not_flat;
+            DOM.qiblaFlatWarning.style.display = 'block';
         } else {
-            flatWarning.style.display = 'none';
+            DOM.qiblaFlatWarning.style.display = 'none';
         }
     }
 
@@ -1761,10 +1899,10 @@ function handleOrientation(event) {
         heading = event.webkitCompassHeading;
         // Check accuracy on iOS
         if (event.webkitCompassAccuracy && event.webkitCompassAccuracy > 30) {
-            if (flatWarning) {
+            if (DOM.qiblaFlatWarning) {
                 const lang = state.settings.lang || 'ar';
-                flatWarning.textContent = lang === 'ar' ? "دقة البوصلة منخفضة، يرجى المعايرة" : "Low compass accuracy, please calibrate";
-                flatWarning.style.display = 'block';
+                DOM.qiblaFlatWarning.textContent = lang === 'ar' ? "دقة البوصلة منخفضة، يرجى المعايرة" : "Low compass accuracy, please calibrate";
+                DOM.qiblaFlatWarning.style.display = 'block';
             }
         }
     } else if (event.absolute || event.type === 'deviceorientationabsolute') {
@@ -1786,72 +1924,56 @@ function handleOrientation(event) {
     lastHeading = (heading + 360) % 360;
 
     const qibla = state.qiblaAngle || 0;
-    const arrow = document.getElementById('compass-arrow');
-    const dial = document.querySelector('.compass-dial');
-    const wrapper = document.querySelector('.compass-wrapper');
-    const degDisplay = document.getElementById('qibla-deg');
     
     // Calculate relative angle to Qibla (0 means pointing to Kaaba)
     let relative = (qibla - lastHeading + 360) % 360;
     if (relative > 180) relative -= 360;
 
-    const relativeWrapper = document.getElementById('qibla-relative-wrapper');
-    const relativeVal = document.getElementById('qibla-relative-val');
-    const relativeDir = document.getElementById('qibla-relative-dir');
-
-    if (relativeWrapper && relativeVal && relativeDir) {
-        relativeWrapper.style.display = 'block';
-        relativeVal.textContent = Math.abs(Math.round(relative));
+    if (DOM.qiblaRelativeWrapper && DOM.qiblaRelativeVal && DOM.qiblaRelativeDir) {
+        DOM.qiblaRelativeWrapper.style.display = 'block';
+        DOM.qiblaRelativeVal.textContent = Math.abs(Math.round(relative));
         
         const lang = state.settings.lang || 'ar';
         const t = I18N[lang];
 
         if (Math.abs(relative) < 5) {
-            relativeDir.textContent = t.qibla_facing;
-            relativeDir.style.color = 'var(--success-color, #10b981)';
+            DOM.qiblaRelativeDir.textContent = t.qibla_facing;
+            DOM.qiblaRelativeDir.style.color = 'var(--success-color, #10b981)';
         } else {
-            relativeDir.textContent = relative > 0 ? t.qibla_right : t.qibla_left;
-            relativeDir.style.color = 'var(--accent-primary)';
+            DOM.qiblaRelativeDir.textContent = relative > 0 ? t.qibla_right : t.qibla_left;
+            DOM.qiblaRelativeDir.style.color = 'var(--accent-primary)';
         }
     }
 
-    if (wrapper) {
+    if (DOM.compassWrapper) {
         const isAligned = Math.abs(relative) < 5; // Within 5 degrees
         if (isAligned) {
-            if (!wrapper.classList.contains('aligned')) {
-                wrapper.classList.add('aligned');
+            if (!DOM.compassWrapper.classList.contains('aligned')) {
+                DOM.compassWrapper.classList.add('aligned');
                 if (navigator.vibrate) navigator.vibrate(50);
             }
         } else {
-            wrapper.classList.remove('aligned');
+            DOM.compassWrapper.classList.remove('aligned');
         }
     }
     
-    if (degDisplay) {
-        // We show the fixed Qibla angle as primary, 
-        // but we could also show the relative angle if we wanted.
-        // For now, let's keep it consistent with the UI.
-        degDisplay.textContent = Math.round(qibla);
+    if (DOM.qiblaDeg) {
+        DOM.qiblaDeg.textContent = Math.round(qibla);
     }
     
-    if (arrow) {
-        // Rotate the arrow to point to Qibla relative to North
-        arrow.style.transform = `translate(-50%, 0) rotate(${qibla}deg)`;
+    if (DOM.compassArrow) {
+        DOM.compassArrow.style.transform = `translate(-50%, 0) rotate(${qibla}deg)`;
     }
     
-    if (dial) {
-        // Rotate the dial to align North with real North
-        dial.style.transform = `rotate(${-lastHeading}deg)`;
+    if (DOM.compassDial) {
+        DOM.compassDial.style.transform = `rotate(${-lastHeading}deg)`;
     }
 }
 
 function renderHijriCalendar() {
-    const monthYearText = document.getElementById('calendar-month-year');
-    const daysGrid = document.getElementById('calendar-days');
-    const eventsContainer = document.getElementById('events-container');
-    if (!daysGrid || !monthYearText) return;
+    if (!DOM.calendarDays || !DOM.calendarMonthYear) return;
 
-    daysGrid.innerHTML = '';
+    DOM.calendarDays.innerHTML = '';
     
     const d = getCorrectedHijriDate(state.calendarDate);
     
@@ -1866,7 +1988,7 @@ function renderHijriCalendar() {
         const hYear = parts.find(p => p.type === 'year').value;
         const hMonthNum = parseInt(new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', {month: 'numeric'}).format(d));
         
-        monthYearText.textContent = `${hMonthName} ${hYear}`;
+        DOM.calendarMonthYear.textContent = `${hMonthName} ${hYear}`;
 
         // Find the first day of the CURRENT HIJRI MONTH
         let tempDate = new Date(d);
@@ -1893,7 +2015,7 @@ function renderHijriCalendar() {
         for (let i = 0; i < startDayOfWeek; i++) {
             const dayDiv = document.createElement('div');
             dayDiv.className = 'calendar-day other-month';
-            daysGrid.appendChild(dayDiv);
+            DOM.calendarDays.appendChild(dayDiv);
         }
 
         // Current Hijri month days
@@ -1949,24 +2071,22 @@ function renderHijriCalendar() {
 }
 
 function shuffleDhikr() {
-    const el = document.getElementById('daily-dhikr');
-    if (!el) return;
+    if (!DOM.dailyDhikr) return;
     const random = CONFIG.adhkar[Math.floor(Math.random() * CONFIG.adhkar.length)];
-    el.style.opacity = '0';
+    DOM.dailyDhikr.style.opacity = '0';
     setTimeout(() => {
-        el.textContent = random;
-        el.style.opacity = '1';
+        DOM.dailyDhikr.textContent = random;
+        DOM.dailyDhikr.style.opacity = '1';
     }, 400);
 }
 
 function renderAdhkar(category) {
-    const list = document.getElementById('adhkar-list');
-    if (!list) return;
+    if (!DOM.adhkarList) return;
 
     const items = CONFIG.fullAdhkar[category];
     if (!items) return;
     
-    list.innerHTML = items.map((item, index) => `
+    DOM.adhkarList.innerHTML = items.map((item, index) => `
         <div class="dhikr-card" id="dhikr-${category}-${index}">
             <p class="dhikr-text">${item.text}</p>
             <div class="dhikr-footer">
@@ -1999,23 +2119,14 @@ function updateDhikrCount(category, index) {
 function loadSettingsToUI() {
     const s = state.settings;
 
-    const langEl = document.getElementById('language-switch');
-    const methodEl = document.getElementById('calc-method');
-    const soundEl = document.getElementById('sound-toggle');
-    const vibrateEl = document.getElementById('vibrate-toggle');
-    const focusEl = document.getElementById('focus-mode');
-    const notifTypeEl = document.getElementById('notification-type');
-    const preRemEl = document.getElementById('pre-reminder');
-    const hijriOffEl = document.getElementById('hijri-offset');
-
-    if (langEl) langEl.value = s.lang || 'ar';
-    if (methodEl) methodEl.value = s.method;
-    if (soundEl) soundEl.checked = s.sound;
-    if (vibrateEl) vibrateEl.checked = s.vibrate;
-    if (focusEl) focusEl.checked = s.focusMode || false;
-    if (notifTypeEl) notifTypeEl.value = s.notificationType || 'beep';
-    if (preRemEl) preRemEl.value = s.preReminder || 0;
-    if (hijriOffEl) hijriOffEl.value = s.hijriOffset || 0;
+    if (DOM.languageSwitch) DOM.languageSwitch.value = s.lang || 'ar';
+    if (DOM.calcMethod) DOM.calcMethod.value = s.method;
+    if (DOM.soundToggle) DOM.soundToggle.checked = s.sound;
+    if (DOM.vibrateToggle) DOM.vibrateToggle.checked = s.vibrate;
+    if (DOM.focusMode) DOM.focusMode.checked = s.focusMode || false;
+    if (DOM.notificationType) DOM.notificationType.value = s.notificationType || 'beep';
+    if (DOM.preReminder) DOM.preReminder.value = s.preReminder || 0;
+    if (DOM.hijriOffset) DOM.hijriOffset.value = s.hijriOffset || 0;
     
     ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'].forEach(p => {
         const el = document.getElementById(`adj-${p}`);
@@ -2024,37 +2135,27 @@ function loadSettingsToUI() {
 }
 
 function saveSettingsFromUI() {
-    const langEl = document.getElementById('language-switch');
-    const methodEl = document.getElementById('calc-method');
-    const soundEl = document.getElementById('sound-toggle');
-    const vibrateEl = document.getElementById('vibrate-toggle');
-    const focusEl = document.getElementById('focus-mode');
-    const notifTypeEl = document.getElementById('notification-type');
-    const preRemEl = document.getElementById('pre-reminder');
-    const hijriOffEl = document.getElementById('hijri-offset');
-
-    if (langEl) state.settings.lang = langEl.value;
-    if (methodEl) state.settings.method = parseInt(methodEl.value) || 3;
-    if (soundEl) state.settings.sound = soundEl.checked;
-    if (vibrateEl) state.settings.vibrate = vibrateEl.checked;
-    if (focusEl) state.settings.focusMode = focusEl.checked;
-    if (notifTypeEl) state.settings.notificationType = notifTypeEl.value;
-    if (preRemEl) state.settings.preReminder = parseInt(preRemEl.value) || 0;
-    if (hijriOffEl) state.settings.hijriOffset = parseInt(hijriOffEl.value) || 0;
+    if (DOM.languageSwitch) state.settings.lang = DOM.languageSwitch.value;
+    if (DOM.calcMethod) state.settings.method = parseInt(DOM.calcMethod.value) || 3;
+    if (DOM.soundToggle) state.settings.sound = DOM.soundToggle.checked;
+    if (DOM.vibrateToggle) state.settings.vibrate = DOM.vibrateToggle.checked;
+    if (DOM.focusMode) state.settings.focusMode = DOM.focusMode.checked;
+    if (DOM.notificationType) state.settings.notificationType = DOM.notificationType.value;
+    if (DOM.preReminder) state.settings.preReminder = parseInt(DOM.preReminder.value) || 0;
+    if (DOM.hijriOffset) state.settings.hijriOffset = parseInt(DOM.hijriOffset.value) || 0;
     
     ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'].forEach(p => {
         const el = document.getElementById(`adj-${p}`);
         if (el) state.adjustments[p] = parseInt(el.value) || 0;
     });
 
-    localStorage.setItem('luxury_settings', JSON.stringify(state.settings));
-    localStorage.setItem('luxury_adj', JSON.stringify(state.adjustments));
+    Storage.set('luxury_settings', state.settings);
+    Storage.set('luxury_adj', state.adjustments);
 }
 
 // --- Effects ---
 function loadParticles() {
-    const container = document.getElementById('particles');
-    if (!container) return;
+    if (!DOM.particles) return;
     const colors = ['#38bdf8', '#818cf8', '#ffffff'];
     for (let i = 0; i < 30; i++) {
         const p = document.createElement('div');
@@ -2069,13 +2170,12 @@ function loadParticles() {
         p.style.setProperty('--d', `${Math.random() * 15 + 10}s`);
         p.style.animationDelay = `${Math.random() * 20}s`;
         p.style.opacity = Math.random() * 0.3 + 0.1;
-        container.appendChild(p);
+        DOM.particles.appendChild(p);
     }
 }
 
 function updateDynamicBackground(hours) {
-    const bg = document.getElementById('dynamic-bg');
-    if (!bg) return;
+    if (!DOM.dynamicBg) return;
 
     let bgClass = 'bg-night';
     if (hours >= 5 && hours < 8) bgClass = 'bg-dawn';
@@ -2083,16 +2183,15 @@ function updateDynamicBackground(hours) {
     else if (hours >= 17 && hours < 19) bgClass = 'bg-sunset';
     else bgClass = 'bg-night';
 
-    if (!bg.classList.contains(bgClass)) {
+    if (!DOM.dynamicBg.classList.contains(bgClass)) {
         // Remove all background classes
-        bg.classList.remove('bg-dawn', 'bg-day', 'bg-sunset', 'bg-night');
-        bg.classList.add(bgClass);
+        DOM.dynamicBg.classList.remove('bg-dawn', 'bg-day', 'bg-sunset', 'bg-night');
+        DOM.dynamicBg.classList.add(bgClass);
     }
 }
 
 function setupBackgroundInteraction() {
-    const bg = document.getElementById('dynamic-bg');
-    if (!bg) return;
+    if (!DOM.dynamicBg) return;
 
     let ticket = null;
     const handleMove = (e) => {
@@ -2102,7 +2201,7 @@ function setupBackgroundInteraction() {
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
             const x = (clientX / window.innerWidth - 0.5) * 20;
             const y = (clientY / window.innerHeight - 0.5) * 20;
-            bg.style.transform = `scale(1.1) translate(${x}px, ${y}px)`;
+            DOM.dynamicBg.style.transform = `scale(1.1) translate(${x}px, ${y}px)`;
         });
     };
 
@@ -2116,16 +2215,14 @@ async function triggerNotification(prayerId) {
     }
 
     if (state.settings.sound && state.settings.notificationType !== 'silent' && !state.settings.focusMode) {
-        const soundId = state.settings.notificationType === 'adhan' ? 'adhan-sound' : 'beep-sound';
-        const audio = document.getElementById(soundId);
+        const audio = state.settings.notificationType === 'adhan' ? DOM.adhanSound : DOM.beepSound;
         if (audio) {
             audio.currentTime = 0;
             audio.play().catch(e => {
                 console.error("Audio play error, retrying with fallback...", e);
                 // Fallback for adhan if external link fails
-                if (state.settings.notificationType === 'adhan') {
-                    const beep = document.getElementById('beep-sound');
-                    if (beep) beep.play();
+                if (state.settings.notificationType === 'adhan' && DOM.beepSound) {
+                    DOM.beepSound.play();
                 }
             });
         }
@@ -2157,7 +2254,7 @@ async function triggerNotification(prayerId) {
 
 async function triggerPreReminder(prayerId, mins) {
     if (state.settings.sound && state.settings.notificationType !== 'silent') {
-        const audio = document.getElementById('beep-sound');
+        const audio = DOM.beepSound;
         if (audio) {
             audio.currentTime = 0;
             audio.play().catch(e => console.error("Audio play error", e));
@@ -2221,4 +2318,12 @@ if ("Notification" in window && Notification.permission === "default") {
     Notification.requestPermission();
 }
 
-init();
+// Cleanup on page unload - prevent memory leaks
+window.addEventListener('beforeunload', () => {
+    if (state.intervals.clock) clearInterval(state.intervals.clock);
+    if (state.intervals.countdown) clearInterval(state.intervals.countdown);
+    window.removeEventListener('deviceorientation', handleOrientation, true);
+    window.removeEventListener('deviceorientationabsolute', handleOrientation, true);
+});
+
+document.addEventListener('DOMContentLoaded', init);

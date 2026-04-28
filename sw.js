@@ -45,44 +45,61 @@ self.addEventListener('message', (event) => {
     }
 });
 
-// Fetch event - network first with cache fallback
+// Fetch event - Optimized Strategy
 self.addEventListener('fetch', (event) => {
-    // Skip non-GET requests and API requests and version check
-    if (event.request.method !== 'GET' || event.request.url.includes('api.aladhan.com') || event.request.url.includes('version.json')) {
-        event.respondWith(fetch(event.request).catch(() => {
-            return new Response('Network error', { status: 408 });
-        }));
+    const url = new URL(event.request.url);
+    
+    // 1. API Requests & Version Check - Network Only
+    if (url.hostname.includes('api.aladhan.com') || url.pathname.includes('version.json')) {
+        event.respondWith(
+            fetch(event.request).catch(() => {
+                return new Response('Network error', { status: 408 });
+            })
+        );
         return;
     }
 
+    // 2. Static Assets (JS, CSS, Fonts) - Cache First (Stale-While-Revalidate)
+    const isAsset = ASSETS.some(asset => event.request.url.includes(asset.replace('./', ''))) ||
+                    url.hostname.includes('cdnjs.cloudflare.com') ||
+                    url.hostname.includes('fonts.googleapis.com') ||
+                    url.hostname.includes('fonts.gstatic.com');
+
+    if (isAsset) {
+        event.respondWith(
+            caches.match(event.request).then(cachedResponse => {
+                const fetchPromise = fetch(event.request).then(networkResponse => {
+                    if (networkResponse && networkResponse.ok) {
+                        const cacheClone = networkResponse.clone();
+                        caches.open(CACHE_NAME).then(cache => cache.put(event.request, cacheClone));
+                    }
+                    return networkResponse;
+                }).catch(() => null);
+
+                return cachedResponse || fetchPromise;
+            })
+        );
+        return;
+    }
+
+    // 3. Others (HTML, etc.) - Network First
     event.respondWith(
         fetch(event.request)
             .then(response => {
-                // Cache new responses
-                if (response.ok && event.request.url.startsWith('http')) {
+                if (response.ok) {
                     const responseClone = response.clone();
-                    caches.open(CACHE_NAME).then(cache => {
-                        cache.put(event.request, responseClone);
-                    });
+                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
                 }
                 return response;
             })
             .catch(() => {
-                // Fallback to cache
-                return caches.match(event.request)
-                    .then(cachedResponse => {
-                        if (cachedResponse) {
-                            return cachedResponse;
-                        }
-                        // Return offline page for HTML requests
-                        if (event.request.headers.get('accept') && event.request.headers.get('accept').includes('text/html')) {
-                            return caches.match('./index.html');
-                        }
-                        return new Response('Offline content not available', {
-                            status: 404,
-                            statusText: 'Not Found'
-                        });
-                    });
+                return caches.match(event.request).then(cachedResponse => {
+                    if (cachedResponse) return cachedResponse;
+                    if (event.request.headers.get('accept')?.includes('text/html')) {
+                        return caches.match('./index.html');
+                    }
+                    return new Response('Offline', { status: 404 });
+                });
             })
     );
 });
