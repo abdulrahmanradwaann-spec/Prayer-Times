@@ -1255,7 +1255,66 @@ body {
     .update-actions {
         width: 100%;
         flex-direction: row;
+        justify-content: center;
     }
+}
+
+/* --- Global Notifications --- */
+.global-notification {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 3000;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 90%;
+    max-width: 400px;
+    pointer-events: none;
+}
+
+.notification-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: 18px;
+    box-shadow: var(--card-shadow);
+    color: var(--text-primary);
+    transform: translateY(-20px) scale(0.95);
+    opacity: 0;
+    transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: auto;
+}
+
+.notification-item.show {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+}
+
+.notification-item.error {
+    border-color: rgba(239, 68, 68, 0.4);
+    background: rgba(20, 10, 10, 0.85);
+}
+
+.notification-item.success {
+    border-color: rgba(34, 197, 94, 0.4);
+    background: rgba(10, 20, 10, 0.85);
+}
+
+.notification-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.notification-message {
+    font-size: 0.95rem;
+    font-weight: 500;
 }
 
 /* --- Responsive Adaptations --- */

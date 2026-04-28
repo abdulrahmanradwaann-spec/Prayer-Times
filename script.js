@@ -363,7 +363,13 @@ let state = {
         countdown: null,
         clock: null
     },
-    calendarDate: new Date()
+    calendarDate: new Date(),
+    uiState: {
+        lastClock: null,
+        lastPeriod: null,
+        lastCountdown: null,
+        lastProgress: null
+    }
 };
 
 const I18N = {
@@ -778,6 +784,7 @@ const DOM = {
     themeToggle: null,
     updateToast: null,
     updateDesc: null,
+    globalNotification: null,
     qiblaOverlay: null,
     geoBtn: null,
     settingsBtn: null,
@@ -843,6 +850,7 @@ function initDOMCache() {
     DOM.themeToggle = document.getElementById('theme-toggle');
     DOM.updateToast = document.getElementById('update-toast');
     DOM.updateDesc = document.getElementById('update-desc');
+    DOM.globalNotification = document.getElementById('global-notification');
     DOM.qiblaOverlay = document.getElementById('qibla-overlay');
     DOM.geoBtn = document.getElementById('geo-btn');
     DOM.settingsBtn = document.getElementById('settings-btn');
@@ -1031,6 +1039,13 @@ async function refreshData() {
         console.warn("No city coordinates available for refreshData");
         return;
     }
+
+    // Show loader if possible
+    if (DOM.loader) {
+        DOM.loader.style.display = 'flex';
+        DOM.loader.classList.remove('fade-out');
+    }
+
     try {
         // Always use coordinates for maximum accuracy
         const url = `${CONFIG.apiBase}/timings?latitude=${state.currentCity.lat}&longitude=${state.currentCity.lng}&method=${state.settings.method}`;
@@ -1045,10 +1060,13 @@ async function refreshData() {
             state.prayerTimes = data.data.timings;
             state.hijriData = data.data.date.hijri;
             Storage.set('cached_prayers', data.data);
+            
+            // Success - Update UI
             updateStaticUI();
             updatePrayerGrid();
+            updateRamadanCountdown();
         } else {
-            throw new Error('Invalid API response');
+            throw new Error('Invalid API response format');
         }
     } catch (error) {
         console.warn("Prayer API Error, using cache...", error.message);
@@ -1056,18 +1074,20 @@ async function refreshData() {
             const cached = Storage.get('cached_prayers');
             if (cached && cached.timings) {
                 state.prayerTimes = cached.timings;
-                state.hijriData = cached.date?.hijri;
+                state.hijriData = cached.date?.hijri || cached.hijri; // Handle different cache formats
                 updateStaticUI();
                 updatePrayerGrid();
+                updateRamadanCountdown();
             } else {
                 throw new Error('No cache available');
             }
         } catch (cacheError) {
             console.error("Cache Error:", cacheError.message);
-            // Use hardcoded fallback prayer times for basic functionality
+            // Use hardcoded fallback prayer times for basic functionality if everything fails
             if (!state.prayerTimes) {
                 state.prayerTimes = {
                     Fajr: '05:30',
+                    Sunrise: '06:45',
                     Dhuhr: '12:00',
                     Asr: '15:30',
                     Maghrib: '18:30',
@@ -1076,6 +1096,14 @@ async function refreshData() {
                 updateStaticUI();
                 updatePrayerGrid();
             }
+        }
+    } finally {
+        // Hide loader with delay for smoothness
+        if (DOM.loader) {
+            setTimeout(() => {
+                DOM.loader.classList.add('fade-out');
+                setTimeout(() => DOM.loader.style.display = 'none', 500);
+            }, 500);
         }
     }
 }
@@ -1148,6 +1176,37 @@ function hideUpdateToast() {
         DOM.updateToast.style.display = 'none';
         isToastShowing = false;
     }, 600);
+}
+
+/**
+ * Shows a non-intrusive global notification
+ * @param {string} message - Message to show
+ * @param {string} type - 'error', 'success', 'info'
+ * @param {number} duration - Time in ms
+ */
+function showGlobalNotification(message, type = 'info', duration = 4000) {
+    if (!DOM.globalNotification) return;
+
+    const notification = document.createElement('div');
+    notification.className = `notification-item ${type}`;
+    
+    const icon = type === 'error' ? '⚠️' : (type === 'success' ? '✅' : 'ℹ️');
+    
+    notification.innerHTML = `
+        <span class="notification-icon">${icon}</span>
+        <span class="notification-message">${message}</span>
+    `;
+
+    DOM.globalNotification.appendChild(notification);
+
+    // Trigger entrance animation
+    requestAnimationFrame(() => notification.classList.add('show'));
+
+    // Auto-remove
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => notification.remove(), 600);
+    }, duration);
 }
 
 // --- UI Updates ---
@@ -1343,8 +1402,15 @@ function updateLogic() {
     const seconds = currentSeconds.toString().padStart(2, '0');
     const period = hours >= 12 ? (state.settings.lang === 'ar' ? 'م' : 'PM') : (state.settings.lang === 'ar' ? 'ص' : 'AM');
     
-    if (DOM.clock) DOM.clock.textContent = `${displayHours}:${minutes}:${seconds}`;
-    if (DOM.period) DOM.period.textContent = period;
+    const clockText = `${displayHours}:${minutes}:${seconds}`;
+    if (DOM.clock && state.uiState.lastClock !== clockText) {
+        DOM.clock.textContent = clockText;
+        state.uiState.lastClock = clockText;
+    }
+    if (DOM.period && state.uiState.lastPeriod !== period) {
+        DOM.period.textContent = period;
+        state.uiState.lastPeriod = period;
+    }
     
     // Update Dynamic Background (Every Minute or when hour changes)
     if (currentSeconds === 0 || !state.lastBackgroundUpdateHour || state.lastBackgroundUpdateHour !== hours) {
@@ -1398,16 +1464,23 @@ function updateLogic() {
     const h = Math.floor(diff / 60);
     const m = diff % 60;
     const s = 59 - currentSeconds;
-    if (DOM.countdown) {
-        DOM.countdown.textContent =
-            `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    
+    const countdownText = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    if (DOM.countdown && state.uiState.lastCountdown !== countdownText) {
+        DOM.countdown.textContent = countdownText;
+        state.uiState.lastCountdown = countdownText;
     }
 
     // Progress Bar (Actual duration calculation)
     const totalDuration = next.min - prev.min;
     const elapsed = currentMin - prev.min;
     const progress = Math.max(0, Math.min(100, (elapsed / totalDuration) * 100));
-    if (DOM.prayerProgress) DOM.prayerProgress.style.width = `${progress}%`;
+    
+    const progressText = `${progress.toFixed(2)}%`;
+    if (DOM.prayerProgress && state.uiState.lastProgress !== progressText) {
+        DOM.prayerProgress.style.width = `${progress}%`;
+        state.uiState.lastProgress = progressText;
+    }
 
     // Notification Check (Robust check)
     const totalDiffSeconds = (diff * 60) + s;
@@ -1507,6 +1580,9 @@ function setupUIListeners() {
     // Global Error Handling
     window.addEventListener('error', (event) => {
         console.error('Global Error:', event.error);
+        if (event.error && event.error.message && event.error.message.includes('API')) {
+            showGlobalNotification(state.settings.lang === 'ar' ? 'حدث خطأ في الاتصال بالخدمة' : 'Service connection error', 'error');
+        }
     });
 
     window.addEventListener('unhandledrejection', (event) => {
@@ -2023,7 +2099,7 @@ function renderHijriCalendar() {
                 <span class="hijri-num">${i}</span>
                 <span class="greg-num">${currentD.getDate()}</span>
             `;
-            daysGrid.appendChild(dayDiv);
+            DOM.calendarDays.appendChild(dayDiv);
         }
 
         // Render Islamic Events
@@ -2041,9 +2117,9 @@ function renderHijriCalendar() {
         // Filter events for the current month
         const currentMonthEvents = islamicEvents.filter(ev => ev.hMonth === initialMonth);
 
-        if (eventsContainer) {
+        if (DOM.eventsContainer) {
             if (currentMonthEvents.length > 0) {
-                eventsContainer.innerHTML = currentMonthEvents.map(ev => `
+                DOM.eventsContainer.innerHTML = currentMonthEvents.map(ev => `
                     <div class="event-item">
                         <i class="fa-solid ${ev.icon} event-icon"></i>
                         <div class="event-info">
@@ -2052,12 +2128,12 @@ function renderHijriCalendar() {
                     </div>
                 `).join('');
             } else {
-                eventsContainer.innerHTML = `<p class="text-muted" style="text-align:center; padding:10px;">${t.no_events}</p>`;
+                DOM.eventsContainer.innerHTML = `<p class="text-muted" style="text-align:center; padding:10px;">${t.no_events}</p>`;
             }
         }
     } catch (e) {
         console.error("Hijri Calendar Error:", e);
-        monthYearText.textContent = "خطأ في تحميل التقويم";
+        if (DOM.calendarMonthYear) DOM.calendarMonthYear.textContent = "خطأ في تحميل التقويم";
     }
 }
 
